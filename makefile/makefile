@@ -12,10 +12,10 @@
 #
 # 1) Make sure that you have the curl command line executable in your path
 # 2) Set the variable ROKU_DEV_TARGET in your environment to the IP 
-#    address of your Roku box. (e.g. export ROKU_DEV_TARGET=192.168.1.1.
+#    address of your Roku box. (e.g. export ROKU_DEV_TARGET=192.168.1.196.
 #    Set in your this variable in your shell startup (e.g. .bashrc)
 ##########################################################################  
-APPNAME = YourNameHere
+APPNAME = ListenBoise
 VERSION = 1.0
 
 ZIP_EXCLUDE= -x \*.pkg -x storeassets\* -x keys\* -x \*/.\*
