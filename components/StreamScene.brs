@@ -50,4 +50,3 @@ Sub Init()
              m.metadataLabel.text = "Now Playing: Metadata Error"
          end if
      End Sub
-    
