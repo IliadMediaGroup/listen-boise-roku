@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
    <component name="StreamScene" extends="Scene">
        <script type="text/brightscript" uri="pkg:/components/StreamScene.brs" />
-       <script type="text/brightscript" uri="pkg:/components/AudioPlayerTask.brs" />
-       <script type="text/brightscript" uri="pkg:/components/MetadataTask.brs" />
        <children>
            <Rectangle
                id="background"
@@ -41,9 +39,13 @@
                repeat="true" />
            <Task
                id="audioTask"
-               control="RUN" />
+               control="RUN">
+               <script type="text/brightscript" uri="pkg:/components/AudioPlayerTask.brs" />
+           </Task>
            <Task
                id="metadataTask"
-               control="RUN" />
+               control="RUN">
+               <script type="text/brightscript" uri="pkg:/components/MetadataTask.brs" />
+           </Task>
        </children>
    </component>
