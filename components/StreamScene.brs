@@ -3,15 +3,17 @@ Sub Init()
          m.metadataLabel = m.top.FindNode("metadataLabel")
          m.playButton = m.top.FindNode("playButton")
          m.stopButton = m.top.FindNode("stopButton")
+         m.timer = m.top.FindNode("metadataTimer")
          
          m.playButton.ObserveField("buttonSelected", "OnPlayButton")
          m.stopButton.ObserveField("buttonSelected", "OnStopButton")
+         m.timer.ObserveField("fire", "OnTimerFire")
          
          m.streamUrl = "https://ice9.securenetsystems.net/KQBLHD3"
          m.metadataUrl = "https://streamdb6web.securenetsystems.net/player_status_update/KQBLHD3.xml"
          
          UpdateMetadata()
-         StartMetadataTimer()
+         m.timer.control = "start"
      End Sub
      
      Sub OnPlayButton()
@@ -24,6 +26,10 @@ Sub Init()
      
      Sub OnStopButton()
          m.audio.Stop()
+     End Sub
+     
+     Sub OnTimerFire()
+         UpdateMetadata()
      End Sub
      
      Sub UpdateMetadata()
@@ -44,10 +50,4 @@ Sub Init()
              m.metadataLabel.text = "Now Playing: Metadata Error"
          end if
      End Sub
-     
-     Sub StartMetadataTimer()
-         m.timer = CreateObject("roTimer")
-         m.timer.SetElapsed(30, 1) ' Update every 30 seconds
-         m.timer.ObserveField("fire", "UpdateMetadata")
-         m.timer.control = "start"
-     End Sub
+    

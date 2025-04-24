@@ -23,5 +23,9 @@
            translation="[300, 250]"
            text="Stop"
            focusable="true" />
+         <Timer
+           id="metadataTimer"
+           duration="30.0"
+           repeat="true" />
        </children>
      </component>
