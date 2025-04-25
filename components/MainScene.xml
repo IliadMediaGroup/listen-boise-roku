@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="MainScene" extends="Scene">
+    <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
+    <children>
+        <Rectangle
+            id="background"
+            color="#000000"
+            width="1280"
+            height="720"
+            translation="[0, 0]"
+            visible="true" />
+        <Poster
+            id="appLogo"
+            uri="pkg:/images/listen_boise_logo.png"
+            translation="[440, 30]"
+            width="400"
+            height="200"
+            loadDisplayMode="scaleToFit"
+            visible="true" />
+        <Group
+            id="tabContainer"
+            translation="[30, 250]">
+            <ButtonGroup
+                id="tabGroup"
+                layoutDirection="vert"
+                itemSpacings="[20]">
+                <Button
+                    id="listenLiveTab"
+                    text="Listen Live"
+                    focusable="true"
+                    visible="true"
+                    minWidth="120"
+                    textColor="0xFFFFFFFF"
+                    focusedTextColor="0xFFFFFFFF" />
+                <Button
+                    id="newsTab"
+                    text="News"
+                    focusable="true"
+                    visible="true"
+                    minWidth="120"
+                    textColor="0xFFFFFFFF"
+                    focusedTextColor="0xFFFFFFFF" />
+                <Button
+                    id="podcastsTab"
+                    text="Podcasts"
+                    focusable="true"
+                    visible="true"
+                    minWidth="120"
+                    textColor="0xFFFFFFFF"
+                    focusedTextColor="0xFFFFFFFF" />
+                <Button
+                    id="toggleButton"
+                    iconUri="pkg:/images/play_pause.png"
+                    focusable="true"
+                    visible="true"
+                    minWidth="120"
+                    maxWidth="120"
+                    textColor="0xFFFFFFFF"
+                    focusedTextColor="0xFFFFFFFF" />
+            </ButtonGroup>
+        </Group>
+        <Group
+            id="contentStack"
+            translation="[270, 250]">
+            <ListenLiveView id="listenLiveView" visible="true" />
+            <NewsView id="newsView" visible="false" />
+            <PodcastsView id="podcastsView" visible="false" />
+        </Group>
+        <Audio id="audioPlayer" />
+    </children>
+</component>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="ListenLiveView" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
+    <interface>
+        <field id="selectedStationIndex" type="integer" />
+    </interface>
+    <children>
+        <PosterGrid
+            id="stationGrid"
+            translation="[0, 0]"
+            itemSize="[150, 150]"
+            itemSpacing="[20, 20]"
+            numColumns="4"
+            numRows="2"
+            visible="true"
+            vertFocusAnimationStyle="floatingFocus"
+            horizFocusAnimationStyle="floatingFocus"
+            wrapDividerBitmapUri=""
+            focusBitmapBlendColor="0xFFFFFFFF" />
+    </children>
+</component>

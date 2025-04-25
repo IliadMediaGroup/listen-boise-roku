@@ -119,7 +119,7 @@ DEV_SERVER_TMP_FILE := /tmp/dev_server_out
 ifdef DEVPASSWORD
 	USERPASS := rokudev:$(DEVPASSWORD)
 else
-	USERPASS := rokudev
+	USERPASS := 5118
 endif
 
 ifeq ($(HOST_OS),macos)

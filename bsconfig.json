@@ -1,0 +1,12 @@
+{
+    "project": "Listen Boise",
+    "sourceFiles": [
+        "components/*.brs",
+        "source/*.brs"
+    ],
+    "diagnosticFilters": [
+        {
+            "code": 1013
+        }
+    ]
+}
