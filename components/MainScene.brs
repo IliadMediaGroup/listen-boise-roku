@@ -6,21 +6,21 @@ Sub Init()
     m.listenLiveTab = m.top.FindNode("listenLiveTab")
     m.newsTab = m.top.FindNode("newsTab")
     m.podcastsTab = m.top.FindNode("podcastsTab")
+    m.NowPlayingButton = m.top.FindNode("NowPlayingButton")
     m.toggleButton = m.top.FindNode("toggleButton")
     m.contentStack = m.top.FindNode("contentStack")
     m.listenLiveView = m.top.FindNode("listenLiveView")
     m.newsView = m.top.FindNode("newsView")
     m.podcastsView = m.top.FindNode("podcastsView")
+    m.appLogo = m.top.FindNode("appLogo")
 
-    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.newsTab = invalid or m.podcastsTab = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.newsView = invalid or m.podcastsView = invalid
+    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.newsTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.newsView = invalid or m.podcastsView = invalid or m.appLogo = invalid
         print "ERROR: Node not found"
         return
     end if
 
     print "MainScene: Setting observers"
-    m.listenLiveTab.observeFieldScoped("buttonSelected", "OnTabSelected")
-    m.newsTab.observeFieldScoped("buttonSelected", "OnTabSelected")
-    m.podcastsTab.observeFieldScoped("buttonSelected", "OnTabSelected")
+    m.tabGroup.observeFieldScoped("buttonSelected", "onButtonSelected")
     m.toggleButton.observeFieldScoped("buttonSelected", "OnToggleButton")
     m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
     m.top.observeFieldScoped("keyEvent", "OnKeyEvent")
@@ -63,76 +63,121 @@ Sub Init()
     print "MainScene: listenLiveTab focus: "; m.listenLiveTab.hasFocus()
     print "MainScene: newsTab focus: "; m.newsTab.hasFocus()
     print "MainScene: podcastsTab focus: "; m.podcastsTab.hasFocus()
+    print "MainScene: NowPlayingButton focus: "; m.NowPlayingButton.hasFocus()
     print "MainScene: Init complete"
 End Sub
 
-Sub OnTabSelected()
-    print "MainScene: Tab selected"
-    print "MainScene: listenLiveTab focus: "; m.listenLiveTab.hasFocus()
-    print "MainScene: newsTab focus: "; m.newsTab.hasFocus()
-    print "MainScene: podcastsTab focus: "; m.podcastsTab.hasFocus()
-    if m.listenLiveTab.hasFocus()
+sub onButtonSelected()
+    selectedIndex = m.tabGroup.buttonSelected
+    print "MainScene: Button selected at index: "; selectedIndex
+
+    if selectedIndex = 0
         print "MainScene: Switching to listenLiveView"
         m.listenLiveView.visible = true
         m.newsView.visible = false
         m.podcastsView.visible = false
         m.top.FindNode("listenLiveView").FindNode("stationGrid").setFocus(true)
         m.justEnteredStationGrid = false
-    else if m.newsTab.hasFocus()
+    else if selectedIndex = 1
         print "MainScene: Switching to newsView"
         m.listenLiveView.visible = false
         m.newsView.visible = true
         m.podcastsView.visible = false
         m.top.FindNode("newsView").setFocus(true)
-    else if m.podcastsTab.hasFocus()
+    else if selectedIndex = 2
         print "MainScene: Switching to podcastsView"
         m.listenLiveView.visible = false
         m.newsView.visible = false
         m.podcastsView.visible = true
         m.top.FindNode("podcastsView").setFocus(true)
+    else if selectedIndex = 3
+        print "MainScene: Showing NowPlaying UI in listenLiveView"
+        if m.currentStationIndex = -1
+            print "MainScene: No station selected, cannot show Now Playing"
+            return
+        end if
+        ' Show playback UI in listenLiveView
+        playbackUI = m.listenLiveView.FindNode("playbackUI")
+        stationGrid = m.listenLiveView.FindNode("stationGrid")
+        stationLabel = m.listenLiveView.FindNode("stationLabel")
+        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
+            print "ERROR: MainScene - Playback UI nodes not found"
+            return
+        end if
+        stationGrid.visible = false
+        playbackUI.visible = true
+        stationLabel.text = m.stations[m.currentStationIndex].name
+        ' Hide all other UI elements for fullscreen experience
+        m.appLogo.visible = false
+        m.tabGroup.visible = false
+        m.newsView.visible = false
+        m.podcastsView.visible = false
+        ' Keep contentStack visible since listenLiveView is inside it
+        m.contentStack.visible = true
+        ' Set focus to playback UI's toggle button
+        m.listenLiveView.FindNode("toggleButton").setFocus(true)
     end if
-    print "MainScene: Current view visibility - listenLiveView: "; m.listenLiveView.visible; ", newsView: "; m.newsView.visible; ", podcastsView: "; m.podcastsView.visible
+
     focusedChildId = "none"
     if m.tabGroup.focusedChild <> invalid
         focusedChildId = m.tabGroup.focusedChild.id
     end if
-    print "MainScene: Post-tab-switch focus - tabGroup: "; m.tabGroup.hasFocus(); ", focused button: "; focusedChildId
+    print "MainScene: Post-button-switch focus - tabGroup: "; m.tabGroup.hasFocus(); ", focused button: "; focusedChildId
     if m.listenLiveView.visible
         print "MainScene: stationGrid focus: "; m.top.FindNode("listenLiveView").FindNode("stationGrid").hasFocus()
     else
         print "MainScene: stationGrid focus: N/A"
     end if
-End Sub
+end sub
 
 Sub OnStationSelected()
     selectedIndex = m.listenLiveView.selectedStationIndex
     print "MainScene: Station selected at index: "; selectedIndex
-    if m.isPlaying and selectedIndex = m.currentStationIndex
-        print "MainScene: Station already playing, stopping playback"
+
+    ' Stop any current playback to start the new station
+    if m.audioPlayer.state = "playing" or m.audioPlayer.state = "buffering"
         m.audioPlayer.control = "stop"
         m.audioPlayer.content = invalid
         m.isPlaying = false
-        return
     end if
+
+    ' Update current station
     m.currentStationIndex = selectedIndex
     m.registry.Write("lastPlayedStationIndex", m.currentStationIndex.ToStr())
     m.registry.Flush()
-    station = m.stations[selectedIndex]
+
+    ' Show playback UI in listenLiveView
+    playbackUI = m.listenLiveView.FindNode("playbackUI")
+    stationGrid = m.listenLiveView.FindNode("stationGrid")
+    stationLabel = m.listenLiveView.FindNode("stationLabel")
+    if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
+        print "ERROR: MainScene - Playback UI nodes not found"
+        return
+    end if
+    stationGrid.visible = false
+    playbackUI.visible = true
+    stationLabel.text = m.stations[m.currentStationIndex].name
+    ' Start playback
     content = CreateObject("roSGNode", "ContentNode")
-    content.url = station.url
-    content.streamFormat = station.format
+    content.url = m.stations[m.currentStationIndex].url
+    content.streamFormat = m.stations[m.currentStationIndex].format
     content.streamQualities = ["SD"]
     content.streamBitrates = [128]
     content.addHeader("User-Agent", "Roku")
     content.addHeader("Accept", "audio/aac")
     content.addHeader("Connection", "keep-alive")
-    if m.audioPlayer.state = "playing" or m.audioPlayer.state = "buffering"
-        m.audioPlayer.control = "stop"
-        m.audioPlayer.content = invalid
-    end if
     m.audioPlayer.content = content
     m.audioPlayer.control = "play"
     m.isPlaying = true
+    print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
+    ' Hide all other UI elements for fullscreen experience
+    m.appLogo.visible = false
+    m.tabGroup.visible = false
+    m.newsView.visible = false
+    m.podcastsView.visible = false
+    m.contentStack.visible = true
+    ' Set focus to playback UI's toggle button
+    m.listenLiveView.FindNode("toggleButton").setFocus(true)
 End Sub
 
 Sub OnToggleButton()
@@ -144,47 +189,82 @@ Sub OnToggleButton()
         m.currentStationIndex = 1
         m.registry.Write("lastPlayedStationIndex", m.currentStationIndex.ToStr())
         m.registry.Flush()
-        station = m.stations[m.currentStationIndex]
+        ' Show playback UI in listenLiveView
+        playbackUI = m.listenLiveView.FindNode("playbackUI")
+        stationGrid = m.listenLiveView.FindNode("stationGrid")
+        stationLabel = m.listenLiveView.FindNode("stationLabel")
+        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
+            print "ERROR: MainScene - Playback UI nodes not found"
+            return
+        end if
+        stationGrid.visible = false
+        playbackUI.visible = true
+        stationLabel.text = m.stations[m.currentStationIndex].name
+        ' Start playback
         content = CreateObject("roSGNode", "ContentNode")
-        content.url = station.url
-        content.streamFormat = station.format
+        content.url = m.stations[m.currentStationIndex].url
+        content.streamFormat = m.stations[m.currentStationIndex].format
         content.streamQualities = ["SD"]
         content.streamBitrates = [128]
         content.addHeader("User-Agent", "Roku")
         content.addHeader("Accept", "audio/aac")
         content.addHeader("Connection", "keep-alive")
-        if m.audioPlayer.state = "playing" or m.audioPlayer.state = "buffering"
-            m.audioPlayer.control = "stop"
-            m.audioPlayer.content = invalid
-        end if
         m.audioPlayer.content = content
         m.audioPlayer.control = "play"
         m.isPlaying = true
+        print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
+        ' Hide all other UI elements for fullscreen experience
+        m.appLogo.visible = false
+        m.tabGroup.visible = false
+        m.newsView.visible = false
+        m.podcastsView.visible = false
+        m.contentStack.visible = true
+        ' Set focus to playback UI's toggle button
+        m.listenLiveView.FindNode("toggleButton").setFocus(true)
         return
     end if
+    ' Toggle playback
+    togglePlayback({})
+End Sub
+
+Sub togglePlayback(data as Object)
+    print "MainScene: togglePlayback called, isPlaying: "; m.isPlaying
     if m.isPlaying
-        print "MainScene: Stopping playback"
         m.audioPlayer.control = "stop"
         m.audioPlayer.content = invalid
         m.isPlaying = false
+        print "MainScene: Playback stopped"
     else
-        print "MainScene: Resuming playback for station index: "; m.currentStationIndex
-        station = m.stations[m.currentStationIndex]
+        if m.currentStationIndex = -1
+            print "MainScene: No station selected to resume"
+            return
+        end if
         content = CreateObject("roSGNode", "ContentNode")
-        content.url = station.url
-        content.streamFormat = station.format
+        content.url = m.stations[m.currentStationIndex].url
+        content.streamFormat = m.stations[m.currentStationIndex].format
         content.streamQualities = ["SD"]
         content.streamBitrates = [128]
         content.addHeader("User-Agent", "Roku")
         content.addHeader("Accept", "audio/aac")
         content.addHeader("Connection", "keep-alive")
-        if m.audioPlayer.state = "playing" or m.audioPlayer.state = "buffering"
-            m.audioPlayer.control = "stop"
-            m.audioPlayer.content = invalid
-        end if
         m.audioPlayer.content = content
         m.audioPlayer.control = "play"
         m.isPlaying = true
+        print "MainScene: Playback resumed - "; m.stations[m.currentStationIndex].name
+    end if
+End Sub
+
+Sub restoreMainUI(data as Object)
+    print "MainScene: restoreMainUI called"
+    m.appLogo.visible = true
+    m.tabGroup.visible = true
+    m.contentStack.visible = true
+    m.listenLiveView.visible = true
+    m.newsView.visible = false
+    m.podcastsView.visible = false
+    m.tabGroup.setFocus(true)
+    if m.tabGroup.focusedChild = invalid
+        m.listenLiveTab.setFocus(true)
     end if
 End Sub
 
@@ -240,6 +320,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             m.listenLiveTab.setFocus(true)
         end if
         m.justEnteredStationGrid = false
+        m.tabGroup.visible = true
+        m.appLogo.visible = true
+        m.contentStack.visible = true
         return true
     end if
 
@@ -254,6 +337,20 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             m.listenLiveTab.setFocus(true)
         end if
         m.justEnteredStationGrid = false
+        m.tabGroup.visible = true
+        m.appLogo.visible = true
+        m.contentStack.visible = true
+        ' Show stationGrid if playbackUI is visible
+        playbackUI = m.listenLiveView.FindNode("playbackUI")
+        stationGrid = m.listenLiveView.FindNode("stationGrid")
+        if playbackUI <> invalid and stationGrid <> invalid
+            if playbackUI.visible
+                playbackUI.visible = false
+                stationGrid.visible = true
+                stationGrid.setFocus(true)
+            end if
+        end if
+        ' Do NOT stop playback
         return true
     end if
 

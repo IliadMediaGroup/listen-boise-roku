@@ -1,4 +1,4 @@
-' main.brs
+' Main.brs
 Sub Main()
     print "Starting Main: Creating roSGScreen"
     screen = CreateObject("roSGScreen")
@@ -10,6 +10,8 @@ Sub Main()
     screen.Show()
     
     print "Showing screen"
+    ' Ensure the scene is used
+    scene.setFocus(true)
     while(true)
         msg = wait(0, m.port)
         if type(msg) = "roSGScreenEvent"

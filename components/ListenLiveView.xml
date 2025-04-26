@@ -1,21 +1,54 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <component name="ListenLiveView" extends="Group">
-    <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
-    <interface>
-        <field id="selectedStationIndex" type="integer" />
-    </interface>
-    <children>
-        <PosterGrid
-            id="stationGrid"
-            translation="[0, 0]"
-            itemSize="[150, 150]"
-            itemSpacing="[20, 20]"
-            numColumns="4"
-            numRows="2"
-            visible="true"
-            vertFocusAnimationStyle="floatingFocus"
-            horizFocusAnimationStyle="floatingFocus"
-            wrapDividerBitmapUri=""
-            focusBitmapBlendColor="0xFFFFFFFF" />
-    </children>
+  <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
+  <interface>
+    <field id="selectedStationIndex" type="integer" onChange="onStationSelected" />
+  </interface>
+  <children>
+    <!-- Station Grid -->
+    <PosterGrid
+      id="stationGrid"
+      translation="[0, 0]"
+      itemSize="[150, 150]"
+      numColumns="4"
+      numRows="2"
+      itemSpacing="[20, 20]"
+      visible="true"
+      posterDisplayMode="scaleToFit"
+      vertFocusAnimationStyle="fixedFocusWrap" />
+
+    <!-- Playback UI -->
+    <Group id="playbackUI" visible="false">
+      <Rectangle
+        id="playbackBackground"
+        width="1280"
+        height="720"
+        color="0x000000FF"
+        translation="[0, 0]" />
+      <!-- Solid background for the labels -->
+      <Rectangle
+        id="labelBackground"
+        width="1000"
+        height="150"
+        color="0x333333FF"
+        translation="[50, 50]" />
+      <Label
+        id="stationLabel"
+        translation="[100, 100]"
+        text=""
+        color="#FFFFFF"
+        width="900" />
+      <Label
+        id="artistLabel"
+        translation="[100, 150]"
+        text="Artist: Loading..."
+        color="#FFFFFF"
+        width="500" />
+      <Button
+        id="toggleButton"
+        text="Play/Pause"
+        translation="[100, 200]"
+        minWidth="200" />
+    </Group>
+  </children>
 </component>

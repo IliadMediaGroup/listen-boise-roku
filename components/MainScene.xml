@@ -49,6 +49,14 @@
                     textColor="0xFFFFFFFF"
                     focusedTextColor="0xFFFFFFFF" />
                 <Button
+                    id="NowPlayingButton"
+                    text="Now Playing"
+                    focusable="true"
+                    visible="true"
+                    minWidth="120"
+                    textColor="0xFFFFFFFF"
+                    focusedTextColor="0xFFFFFFFF" />
+                <Button
                     id="toggleButton"
                     iconUri="pkg:/images/play_pause.png"
                     focusable="true"
