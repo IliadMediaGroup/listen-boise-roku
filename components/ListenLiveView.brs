@@ -34,8 +34,8 @@ sub init()
         {poster: "pkg:/images/bull.png", title: "101.9 The Bull", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KQBL.xml"},
         {poster: "pkg:/images/my.png", title: "My 102.7", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KZMG.xml"},
         {poster: "pkg:/images/bob.png", title: "Bob FM 96.1", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KSRV.xml"},
-        {poster: "pkg:/images/wild.jpg", title: "Wild 101.1", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KWYD.xml"},
-        {poster: "pkg:/images/irock.png", title: "I-Rock 99.1 FM", xmlUrl: "https://streamdb9web.securenetsystems.net/player_status_update/KQBLHD2.xml"},
+        {poster: "pkg:/images/wild.jpg", title: "Wild 101.1", xmlUrl: "https://streamdb9web.securenetsystems.net/player_status_update/KWYD.xml"},
+        {poster: "pkg:/images/irock.png", title: "IRock 99.1 FM", xmlUrl: "https://streamdb9web.securenetsystems.net/player_status_update/KQBLHD2.xml"},
         {poster: "pkg:/images/fox.png", title: "Fox Sports 99.9", xmlUrl: "https://streamdb8web.securenetsystems.net/player_status_update/KSRVHD2.xml"},
         {poster: "pkg:/images/kool.png", title: "101.5 Kool FM", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KKOO.xml"},
         {poster: "pkg:/images/alt.png", title: "96.5 The Alternative", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KQBLHD3.xml"}
@@ -52,7 +52,14 @@ sub init()
     m.stationGrid.content = content
     print "ListenLiveView: Total stations loaded: "; content.GetChildCount()
 
+    m.stationGrid.itemFocused = 0
+    print "ListenLiveView: Initialized stationGrid focus on item: "; m.stationGrid.itemFocused
+
+    m.top.selectedStationIndex = -1
+    print "ListenLiveView: Initialized selectedStationIndex to: "; m.top.selectedStationIndex
+
     m.toggleButton.observeFieldScoped("buttonSelected", "onToggleButton")
+    m.isPlaying = false
 
     print "ListenLiveView: stationGrid focus: "; m.stationGrid.hasFocus()
 end sub
@@ -61,6 +68,7 @@ sub onStationSelected()
     print "ListenLiveView: onStationSelected triggered, selectedStationIndex: "; m.top.selectedStationIndex
     index = m.top.selectedStationIndex
     if index >= 0 and index < m.stations.Count()
+        ' Ensure playbackUI is hidden and then shown to force a refresh
         m.playbackUI.visible = false
         m.playbackUI.visible = true
         m.stationGrid.visible = false
@@ -84,18 +92,21 @@ sub onStationSelected()
         print "ListenLiveView: artistLabel boundingRect: "; m.artistLabel.boundingRect()
         print "ListenLiveView: stationLabel boundingRect: "; m.stationLabel.boundingRect()
 
+        ' Force layout update
+        m.playbackUI.callFunc("updateLayout", invalid)
+
         m.toggleButton.setFocus(true)
 
         scene = m.top.getScene()
         if scene <> invalid
-            print "ListenLiveView: Hiding MainScene UI elements using FindNode"
+            print "ListenLiveView: Hiding MainScene UI elements using FindNode (excluding appLogo)"
             appLogo = scene.FindNode("appLogo")
             tabGroup = scene.FindNode("tabGroup")
             tabContainer = scene.FindNode("tabContainer")
             contentStack = scene.FindNode("contentStack")
             background = scene.FindNode("background")
             if appLogo <> invalid
-                appLogo.visible = false
+                appLogo.visible = true
                 print "ListenLiveView: appLogo visible: "; appLogo.visible
             else
                 print "ListenLiveView: appLogo not found"
@@ -113,7 +124,7 @@ sub onStationSelected()
                 print "ListenLiveView: tabContainer not found"
             end if
             if contentStack <> invalid
-                contentStack.visible = false
+                contentStack.visible = true
                 print "ListenLiveView: contentStack visible: "; contentStack.visible
             end if
             if background <> invalid
@@ -122,6 +133,10 @@ sub onStationSelected()
             else
                 print "ListenLiveView: background not found"
             end if
+            ' Debug visibility and focus chain
+            print "ListenLiveView: Scene visibility: "; scene.visible
+            print "ListenLiveView: Scene focus: "; scene.hasFocus()
+            print "ListenLiveView: toggleButton focus: "; m.toggleButton.hasFocus()
         else
             print "ListenLiveView: Scene reference invalid, cannot hide MainScene UI elements"
         end if
@@ -163,10 +178,11 @@ end sub
 sub onToggleButton()
     print "ListenLiveView: Toggle button pressed"
     scene = m.top.getScene()
-    if scene <> invalid and scene.isFuncDefined("togglePlayback")
-        scene.callFunc("togglePlayback")
+    if scene <> invalid
+        scene.callFunc("togglePlayback", invalid)
+        m.isPlaying = not m.isPlaying
     else
-        print "ListenLiveView: Cannot call togglePlayback - scene invalid or function not defined"
+        print "ListenLiveView: Cannot call togglePlayback - scene invalid"
     end if
 end sub
 
@@ -183,16 +199,12 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.stationGrid.visible = true
             scene = m.top.getScene()
             if scene <> invalid
-                appLogo = scene.FindNode("appLogo")
                 tabGroup = scene.FindNode("tabGroup")
                 tabContainer = scene.FindNode("tabContainer")
                 contentStack = scene.FindNode("contentStack")
                 background = scene.FindNode("background")
                 listenLiveTab = scene.FindNode("listenLiveTab")
-                if appLogo <> invalid
-                    appLogo.visible = true
-                    print "ListenLiveView: appLogo visible: "; appLogo.visible
-                end if
+                appLogo = scene.FindNode("appLogo")
                 if tabGroup <> invalid
                     tabGroup.visible = true
                     print "ListenLiveView: tabGroup visible: "; tabGroup.visible
@@ -208,6 +220,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 if background <> invalid
                     background.visible = true
                     print "ListenLiveView: background visible: "; background.visible
+                end if
+                if appLogo <> invalid
+                    appLogo.visible = true
+                    print "ListenLiveView: appLogo visible: "; appLogo.visible
                 end if
                 if tabGroup <> invalid and listenLiveTab <> invalid
                     tabGroup.setFocus(true)
@@ -232,7 +248,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
     if m.stationGrid.hasFocus() and key = "OK"
         print "ListenLiveView: OK key pressed, selecting station at index: "; m.stationGrid.itemFocused
-        m.top.selectedStationIndex = m.stationGrid.itemFocused
+        ' If the same station is reselected, manually trigger onStationSelected
+        if m.top.selectedStationIndex = m.stationGrid.itemFocused
+            print "ListenLiveView: Reselecting same station, manually triggering onStationSelected"
+            onStationSelected()
+        else
+            m.top.selectedStationIndex = m.stationGrid.itemFocused
+        end if
         return true
     end if
 

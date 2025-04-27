@@ -1,4 +1,3 @@
-' MainScene.brs
 Sub Init()
     print "MainScene: Entering Init"
     m.audioPlayer = m.top.FindNode("audioPlayer")
@@ -31,7 +30,7 @@ Sub Init()
         {url: "https://ice9.securenetsystems.net/KZMG", name: "My 102.7", format: "aac"},
         {url: "https://ice64.securenetsystems.net/KSRV", name: "Bob FM 96.1", format: "aac"},
         {url: "https://ice9.securenetsystems.net/KWYD", name: "Wild 101.1", format: "aac"},
-        {url: "https://ice64.securenetsystems.net/KQBLHD2", name: "I-Rock 99.1 FM", format: "aac"},
+        {url: "https://ice64.securenetsystems.net/KQBLHD2", name: "IRock 99.1 FM", format: "aac"},
         {url: "https://ice64.securenetsystems.net/KSRVHD2", name: "Fox Sports 99.9", format: "aac"},
         {url: "https://ice5.securenetsystems.net/KKOO", name: "101.5 Kool FM", format: "aac"},
         {url: "https://ice9.securenetsystems.net/KQBLHD3", name: "96.5 The Alternative", format: "aac"}
@@ -51,9 +50,29 @@ Sub Init()
     m.justEnteredStationGrid = false
 
     print "MainScene: Initial view set to listenLiveView"
-    
-    m.tabGroup.setFocus(true)
+    m.listenLiveView.visible = true
+    m.newsView.visible = false
+    m.podcastsView.visible = false
+
+    ' Ensure UI elements are visible on launch
+    m.appLogo.visible = true
+    m.tabGroup.visible = true
+    m.contentStack.visible = true
+    m.listenLiveView.FindNode("stationGrid").visible = true
+
+    ' Set the stationGrid's focused item to the last played station, if applicable
+    if m.currentStationIndex <> -1
+        print "MainScene: Setting stationGrid focus to last played station at index: "; m.currentStationIndex
+        stationGrid = m.listenLiveView.FindNode("stationGrid")
+        if stationGrid <> invalid
+            stationGrid.itemFocused = m.currentStationIndex
+        end if
+    end if
+
     print "MainScene: Initial focus set to tabGroup"
+    m.tabGroup.setFocus(true)
+    m.listenLiveTab.setFocus(true)
+
     print "MainScene: scene focus: "; m.top.hasFocus()
     focusedChildId = "none"
     if m.tabGroup.focusedChild <> invalid
@@ -108,7 +127,7 @@ sub onButtonSelected()
         playbackUI.visible = true
         stationLabel.text = m.stations[m.currentStationIndex].name
         ' Hide all other UI elements for fullscreen experience
-        m.appLogo.visible = false
+        m.appLogo.visible = true
         m.tabGroup.visible = false
         m.newsView.visible = false
         m.podcastsView.visible = false
@@ -116,6 +135,8 @@ sub onButtonSelected()
         m.contentStack.visible = true
         ' Set focus to playback UI's toggle button
         m.listenLiveView.FindNode("toggleButton").setFocus(true)
+        ' Ensure scene has focus
+        m.top.setFocus(true)
     end if
 
     focusedChildId = "none"
@@ -134,12 +155,25 @@ Sub OnStationSelected()
     selectedIndex = m.listenLiveView.selectedStationIndex
     print "MainScene: Station selected at index: "; selectedIndex
 
-    ' Stop any current playback to start the new station
-    if m.audioPlayer.state = "playing" or m.audioPlayer.state = "buffering"
+    ' Validate the selected index to prevent crashes
+    if selectedIndex < 0 or selectedIndex >= m.stations.Count()
+        print "MainScene: Invalid station index: "; selectedIndex; ", aborting playback"
+        return
+    end if
+
+    ' Recreate audio player to ensure a clean state
+    if m.audioPlayer <> invalid
         m.audioPlayer.control = "stop"
         m.audioPlayer.content = invalid
-        m.isPlaying = false
+        m.audioPlayer.unobserveFieldScoped("state")
+        m.audioPlayer = invalid
     end if
+    m.audioPlayer = m.top.FindNode("audioPlayer")
+    if m.audioPlayer = invalid
+        print "ERROR: MainScene - audioPlayer not found after recreation"
+        return
+    end if
+    m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
 
     ' Update current station
     m.currentStationIndex = selectedIndex
@@ -150,16 +184,19 @@ Sub OnStationSelected()
     playbackUI = m.listenLiveView.FindNode("playbackUI")
     stationGrid = m.listenLiveView.FindNode("stationGrid")
     stationLabel = m.listenLiveView.FindNode("stationLabel")
-    if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
+    toggleButton = m.listenLiveView.FindNode("toggleButton")
+    if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid or toggleButton = invalid
         print "ERROR: MainScene - Playback UI nodes not found"
         return
     end if
     stationGrid.visible = false
     playbackUI.visible = true
     stationLabel.text = m.stations[m.currentStationIndex].name
-    ' Start playback
+    ' Start playback with a fresh ContentNode
     content = CreateObject("roSGNode", "ContentNode")
-    content.url = m.stations[m.currentStationIndex].url
+    ' Append a timestamp to the URL to force a fresh stream
+    timestamp = (CreateObject("roDateTime")).AsSeconds().ToStr()
+    content.url = m.stations[m.currentStationIndex].url + "?t=" + timestamp
     content.streamFormat = m.stations[m.currentStationIndex].format
     content.streamQualities = ["SD"]
     content.streamBitrates = [128]
@@ -167,17 +204,25 @@ Sub OnStationSelected()
     content.addHeader("Accept", "audio/aac")
     content.addHeader("Connection", "keep-alive")
     m.audioPlayer.content = content
+    ' Increase delay to ensure the audio player is ready
+    sleep(200) ' 200ms delay
+    m.audioPlayer.control = "prebuffer"
     m.audioPlayer.control = "play"
     m.isPlaying = true
+    ' Update toggle button state
+    toggleButton.text = "Pause"
+    toggleButton.iconUri = "pkg:/images/pause.png"
     print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
     ' Hide all other UI elements for fullscreen experience
-    m.appLogo.visible = false
+    m.appLogo.visible = true
     m.tabGroup.visible = false
     m.newsView.visible = false
     m.podcastsView.visible = false
     m.contentStack.visible = true
-    ' Set focus to playback UI's toggle button
+    ' Set focus to playback UI's toggle button and ensure scene has focus
     m.listenLiveView.FindNode("toggleButton").setFocus(true)
+    m.top.setFocus(true)
+    print "MainScene: Scene focus after station selection: "; m.top.hasFocus()
 End Sub
 
 Sub OnToggleButton()
@@ -185,15 +230,22 @@ Sub OnToggleButton()
     print "MainScene: Current station index: "; m.currentStationIndex
     print "MainScene: Is playing: "; m.isPlaying
     if m.currentStationIndex = -1
-        print "MainScene: No station selected, defaulting to My 102.7 (index 1)"
-        m.currentStationIndex = 1
+        stationGrid = m.listenLiveView.FindNode("stationGrid")
+        if stationGrid <> invalid
+            m.currentStationIndex = stationGrid.itemFocused
+            print "MainScene: No station selected, using focused station index: "; m.currentStationIndex
+        else
+            print "MainScene: No station selected, defaulting to 101.9 The Bull (index 0)"
+            m.currentStationIndex = 0
+        end if
         m.registry.Write("lastPlayedStationIndex", m.currentStationIndex.ToStr())
         m.registry.Flush()
         ' Show playback UI in listenLiveView
         playbackUI = m.listenLiveView.FindNode("playbackUI")
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         stationLabel = m.listenLiveView.FindNode("stationLabel")
-        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
+        toggleButton = m.listenLiveView.FindNode("toggleButton")
+        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid or toggleButton = invalid
             print "ERROR: MainScene - Playback UI nodes not found"
             return
         end if
@@ -202,7 +254,8 @@ Sub OnToggleButton()
         stationLabel.text = m.stations[m.currentStationIndex].name
         ' Start playback
         content = CreateObject("roSGNode", "ContentNode")
-        content.url = m.stations[m.currentStationIndex].url
+        timestamp = (CreateObject("roDateTime")).AsSeconds().ToStr()
+        content.url = m.stations[m.currentStationIndex].url + "?t=" + timestamp
         content.streamFormat = m.stations[m.currentStationIndex].format
         content.streamQualities = ["SD"]
         content.streamBitrates = [128]
@@ -210,17 +263,23 @@ Sub OnToggleButton()
         content.addHeader("Accept", "audio/aac")
         content.addHeader("Connection", "keep-alive")
         m.audioPlayer.content = content
+        sleep(200)
+        m.audioPlayer.control = "prebuffer"
         m.audioPlayer.control = "play"
         m.isPlaying = true
+        ' Update toggle button state
+        toggleButton.text = "Pause"
+        toggleButton.iconUri = "pkg:/images/pause.png"
         print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
         ' Hide all other UI elements for fullscreen experience
-        m.appLogo.visible = false
+        m.appLogo.visible = true
         m.tabGroup.visible = false
         m.newsView.visible = false
         m.podcastsView.visible = false
         m.contentStack.visible = true
-        ' Set focus to playback UI's toggle button
+        ' Set focus to playback UI's toggle button and ensure scene has focus
         m.listenLiveView.FindNode("toggleButton").setFocus(true)
+        m.top.setFocus(true)
         return
     end if
     ' Toggle playback
@@ -228,19 +287,41 @@ Sub OnToggleButton()
 End Sub
 
 Sub togglePlayback(data as Object)
+    if data = invalid then data = {}
     print "MainScene: togglePlayback called, isPlaying: "; m.isPlaying
+    toggleButton = m.listenLiveView.FindNode("toggleButton")
+    if toggleButton = invalid
+        print "ERROR: MainScene - toggleButton not found"
+        return
+    end if
     if m.isPlaying
         m.audioPlayer.control = "stop"
         m.audioPlayer.content = invalid
         m.isPlaying = false
+        toggleButton.text = "Play"
+        toggleButton.iconUri = "pkg:/images/play.png"
         print "MainScene: Playback stopped"
     else
         if m.currentStationIndex = -1
             print "MainScene: No station selected to resume"
             return
         end if
+        ' Recreate audio player to ensure a clean state
+        if m.audioPlayer <> invalid
+            m.audioPlayer.control = "stop"
+            m.audioPlayer.content = invalid
+            m.audioPlayer.unobserveFieldScoped("state")
+            m.audioPlayer = invalid
+        end if
+        m.audioPlayer = m.top.FindNode("audioPlayer")
+        if m.audioPlayer = invalid
+            print "ERROR: MainScene - audioPlayer not found after recreation"
+            return
+        end if
+        m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
         content = CreateObject("roSGNode", "ContentNode")
-        content.url = m.stations[m.currentStationIndex].url
+        timestamp = (CreateObject("roDateTime")).AsSeconds().ToStr()
+        content.url = m.stations[m.currentStationIndex].url + "?t=" + timestamp
         content.streamFormat = m.stations[m.currentStationIndex].format
         content.streamQualities = ["SD"]
         content.streamBitrates = [128]
@@ -248,13 +329,20 @@ Sub togglePlayback(data as Object)
         content.addHeader("Accept", "audio/aac")
         content.addHeader("Connection", "keep-alive")
         m.audioPlayer.content = content
+        sleep(200)
+        m.audioPlayer.control = "prebuffer"
         m.audioPlayer.control = "play"
         m.isPlaying = true
+        toggleButton.text = "Pause"
+        toggleButton.iconUri = "pkg:/images/pause.png"
         print "MainScene: Playback resumed - "; m.stations[m.currentStationIndex].name
+        ' Ensure scene has focus
+        m.top.setFocus(true)
     end if
 End Sub
 
 Sub restoreMainUI(data as Object)
+    if data = invalid then data = {}
     print "MainScene: restoreMainUI called"
     m.appLogo.visible = true
     m.tabGroup.visible = true
@@ -275,10 +363,25 @@ Sub OnAudioStateChange()
         errorMsg = m.audioPlayer.errorMsg
         print "MainScene: Audio error - Code: "; errorCode; ", Message: "; errorMsg
         m.isPlaying = false
+        toggleButton = m.listenLiveView.FindNode("toggleButton")
+        if toggleButton <> invalid
+            toggleButton.text = "Play"
+            toggleButton.iconUri = "pkg:/images/play.png"
+        end if
     else if m.audioPlayer.state = "playing"
         m.isPlaying = true
+        toggleButton = m.listenLiveView.FindNode("toggleButton")
+        if toggleButton <> invalid
+            toggleButton.text = "Pause"
+            toggleButton.iconUri = "pkg:/images/pause.png"
+        end if
     else if m.audioPlayer.state = "stopped"
         m.isPlaying = false
+        toggleButton = m.listenLiveView.FindNode("toggleButton")
+        if toggleButton <> invalid
+            toggleButton.text = "Play"
+            toggleButton.iconUri = "pkg:/images/play.png"
+        end if
     end if
 End Sub
 
@@ -348,6 +451,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
                 playbackUI.visible = false
                 stationGrid.visible = true
                 stationGrid.setFocus(true)
+                stationGrid.itemFocused = m.currentStationIndex
             end if
         end if
         ' Do NOT stop playback
@@ -364,13 +468,8 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
                 print "MainScene: Moving focus to stationGrid in listenLiveView"
                 stationGrid = m.top.FindNode("listenLiveView").FindNode("stationGrid")
                 stationGrid.setFocus(true)
-                ' Move focus to the next item in the grid
-                currentIndex = stationGrid.itemFocused
-                nextIndex = currentIndex + 1
-                if nextIndex < stationGrid.content.getChildCount()
-                    print "MainScene: Advancing focus in stationGrid from index "; currentIndex; " to "; nextIndex
-                    stationGrid.itemFocused = nextIndex
-                end if
+                stationGrid.itemFocused = 0 ' Explicitly focus the first item
+                print "MainScene: stationGrid focused item: "; stationGrid.itemFocused
                 m.justEnteredStationGrid = true
             else if m.newsView.visible
                 print "MainScene: Moving focus to newsView"

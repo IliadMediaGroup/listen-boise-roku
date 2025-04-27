@@ -5,59 +5,63 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
   <children>
-    <PosterGrid
-      id="stationGrid"
-      translation="[0, 0]"
-      itemSize="[150, 150]"
-      itemSpacing="[20, 20]"
-      numColumns="4"
-      numRows="2"
-      renderTracking="full"
-      visible="true" />
     <Group
-      id="playbackUI"
-      translation="[0, 0]"
-      visible="false">
-      <Rectangle
-        id="boundsRect"
+      translation="[0, 0]">
+      <PosterGrid
+        id="stationGrid"
         translation="[0, 0]"
-        width="1280"
-        height="720"
-        color="#0000FF50"
+        itemSize="[150, 150]"
+        itemSpacing="[20, 20]"
+        numColumns="4"
+        numRows="2"
+        renderTracking="full"
         visible="true" />
-      <Poster
-        id="albumCoverPoster"
-        translation="[200, 30]"
-        width="300"
-        height="300"
-        loadDisplayMode="scaleToFit"
-        loadSync="true"
-        visible="true" />
-      <Label
-        id="stationLabel"
-        translation="[200, 350]"
-        width="300"
-        height="40"
-        font="font:SmallSystemFont"
-        color="#FFFFFF"
-        horizAlign="center"
-        visible="true" />
-      <Label
-        id="artistLabel"
-        translation="[200, 400]"
-        width="300"
-        height="40"
-        font="font:SmallSystemFont"
-        color="#FFFFFF"
-        horizAlign="center"
-        visible="true" />
-      <Button
-        id="toggleButton"
-        translation="[275, 460]"
-        iconUri="pkg:/images/play.png"
-        focusFootprintBitmapUri="pkg:/images/focus.png"
-        focusBitmapUri="pkg:/images/focus.png"
-        visible="true" />
+    </Group>
+    <Group
+      translation="[0, 0]">
+      <LayoutGroup
+        id="playbackUI"
+        translation="[368, 220]"
+        layoutDirection="vert"
+        horizAlignment="center"
+        vertAlignment="center"
+        itemSpacings="[10, 10, 10]"
+        visible="false">
+        <Poster
+          id="albumCoverPoster"
+          translation="[0, 0]"
+          width="300"
+          height="300"
+          loadDisplayMode="scaleToFit"
+          loadSync="true"
+          visible="true" />
+        <Label
+          id="stationLabel"
+          translation="[0, 0]"
+          width="300"
+          height="40"
+          font="font:SmallSystemFont"
+          color="#FFFFFF"
+          horizAlign="center"
+          visible="true" />
+        <Label
+          id="artistLabel"
+          translation="[0, 0]"
+          width="300"
+          height="40"
+          font="font:SmallSystemFont"
+          color="#FFFFFF"
+          horizAlign="center"
+          visible="true" />
+        <Button
+          id="toggleButton"
+          translation="[0, 0]"
+          text="Play"
+          iconUri="pkg:/images/play.png"
+          focusFootprintBitmapUri="pkg:/images/focus.png"
+          focusBitmapUri="pkg:/images/focus.png"
+          visible="true" />
+      </LayoutGroup>
     </Group>
   </children>
 </component>
