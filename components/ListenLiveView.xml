@@ -5,8 +5,8 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
   <children>
-    <Group
-      translation="[0, 0]">
+    <!-- Station Grid -->
+    <Group translation="[0, 0]">
       <PosterGrid
         id="stationGrid"
         translation="[0, 0]"
@@ -15,17 +15,18 @@
         numColumns="4"
         numRows="2"
         renderTracking="full"
-        visible="true" />
+        visible="true"
+        focusable="true" />
     </Group>
-    <Group
-      translation="[0, 0]">
+    <!-- Playback UI -->
+    <Group translation="[0, 0]">
       <LayoutGroup
         id="playbackUI"
-        translation="[368, 220]"
+        translation="[368, 200]"
         layoutDirection="vert"
         horizAlignment="center"
         vertAlignment="center"
-        itemSpacings="[10, 10, 10]"
+        itemSpacings="[10, 10, 10, 10]"
         visible="false">
         <Poster
           id="albumCoverPoster"
@@ -34,7 +35,7 @@
           height="300"
           loadDisplayMode="scaleToFit"
           loadSync="true"
-          visible="true" />
+          visible="false" />
         <Label
           id="stationLabel"
           translation="[0, 0]"
@@ -43,7 +44,16 @@
           font="font:SmallSystemFont"
           color="#FFFFFF"
           horizAlign="center"
-          visible="true" />
+          visible="false" />
+        <Label
+          id="songLabel"
+          translation="[0, 0]"
+          width="300"
+          height="40"
+          font="font:SmallSystemFont"
+          color="#FFFFFF"
+          horizAlign="center"
+          visible="false" />
         <Label
           id="artistLabel"
           translation="[0, 0]"
@@ -52,15 +62,16 @@
           font="font:SmallSystemFont"
           color="#FFFFFF"
           horizAlign="center"
-          visible="true" />
-        <Button
+          visible="false" />
+        <Poster
           id="toggleButton"
+          uri="pkg:/images/play_pause.png"
           translation="[0, 0]"
-          text="Play"
-          iconUri="pkg:/images/play.png"
-          focusFootprintBitmapUri="pkg:/images/focus.png"
-          focusBitmapUri="pkg:/images/focus.png"
-          visible="true" />
+          width="48"
+          height="48"
+          loadDisplayMode="scaleToFit"
+          visible="false"
+          focusable="true" />
       </LayoutGroup>
     </Group>
   </children>

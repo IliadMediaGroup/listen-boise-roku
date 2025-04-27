@@ -2,17 +2,18 @@
 <component name="MainScene" extends="Scene">
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
     <children>
-        <Rectangle
+        <Poster
             id="background"
-            color="#000000"
+            uri="pkg:/images/background.png"
             width="1280"
             height="720"
             translation="[0, 0]"
+            loadDisplayMode="scaleToFill"
             visible="true" />
         <Poster
             id="appLogo"
             uri="pkg:/images/listen_boise_logo.png"
-            translation="[440, 30]"
+            translation="[440, 10]"
             width="400"
             height="200"
             loadDisplayMode="scaleToFit"
@@ -56,15 +57,15 @@
                     minWidth="120"
                     textColor="0xFFFFFFFF"
                     focusedTextColor="0xFFFFFFFF" />
-                <Button
+                <Poster
                     id="toggleButton"
-                    iconUri="pkg:/images/play_pause.png"
-                    focusable="true"
+                    uri="pkg:/images/play_pause.png"
+                    width="48"
+                    height="48"
+                    translation="[0, 0]"
+                    loadDisplayMode="scaleToFit"
                     visible="true"
-                    minWidth="120"
-                    maxWidth="120"
-                    textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFFFFFF" />
+                    focusable="true" />
             </ButtonGroup>
         </Group>
         <Group
