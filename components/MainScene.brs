@@ -63,10 +63,18 @@ Sub Init()
     m.background.uri = "pkg:/images/background.png"
 
     print "MainScene: Setting initial focus to tabGroup"
+    m.focusTimer = CreateObject("roSGNode", "Timer")
+    m.focusTimer.duration = 0.1
+    m.focusTimer.observeField("fire", "setInitialFocus")
+    m.focusTimer.control = "start"
+End Sub
+
+Sub setInitialFocus()
+    print "MainScene: Setting initial focus in timer callback"
     m.tabGroup.setFocus(true)
     m.listenLiveTab.setFocus(true)
     m.top.setFocus(true)
-
+    m.top.observeFieldScoped("focusedChild", "onFocusChange")
     print "MainScene: scene focus: "; m.top.hasFocus()
     focusedChildId = "none"
     if m.tabGroup.focusedChild <> invalid
@@ -79,6 +87,16 @@ Sub Init()
     print "MainScene: NowPlayingButton focus: "; m.NowPlayingButton.hasFocus()
     print "MainScene: stationGrid focus: "; m.listenLiveView.FindNode("stationGrid").hasFocus()
     print "MainScene: Init complete"
+    m.focusTimer.control = "stop"
+    m.focusTimer = invalid
+End Sub
+
+Sub onFocusChange()
+    if m.top.focusedChild = invalid and m.tabGroup.hasFocus() = false
+        print "MainScene: Focus lost unexpectedly, restoring to tabGroup"
+        m.tabGroup.setFocus(true)
+        m.listenLiveTab.setFocus(true)
+    end if
 End Sub
 
 sub onButtonSelected()
@@ -90,7 +108,9 @@ sub onButtonSelected()
         m.listenLiveView.visible = true
         m.newsView.visible = false
         m.podcastsView.visible = false
-        m.top.FindNode("listenLiveView").FindNode("stationGrid").setFocus(true)
+        m.top.FindNode("listenLiveView").FindNode("stationGrid").visible = true
+        m.tabGroup.setFocus(true)
+        m.listenLiveTab.setFocus(true)
         m.justEnteredStationGrid = false
         m.background.visible = true
     else if selectedIndex = 1
@@ -192,7 +212,6 @@ Sub OnStationSelected()
     content.addHeader("Accept", "audio/aac")
     content.addHeader("Connection", "keep-alive")
     m.audioPlayer.content = content
-    sleep(200)
     m.audioPlayer.control = "prebuffer"
     m.audioPlayer.control = "play"
     m.isPlaying = true
@@ -227,11 +246,11 @@ Sub OnToggleButton()
     if m.currentStationIndex = -1
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         if stationGrid <> invalid
-            m.currentStationIndex = stationGrid.itemFocused
-            print "MainScene: No station selected, using focused station index: "; m.currentStationIndex
-        else
+            m.currentStationIndex = 0 ' Default to 101.9 The Bull
             print "MainScene: No station selected, defaulting to 101.9 The Bull (index 0)"
-            m.currentStationIndex = 0
+        else
+            print "ERROR: MainScene - stationGrid not found"
+            return
         end if
         m.registry.Write("lastPlayedStationIndex", m.currentStationIndex.ToStr())
         m.registry.Flush()
@@ -256,7 +275,6 @@ Sub OnToggleButton()
         content.addHeader("Accept", "audio/aac")
         content.addHeader("Connection", "keep-alive")
         m.audioPlayer.content = content
-        sleep(200)
         m.audioPlayer.control = "prebuffer"
         m.audioPlayer.control = "play"
         m.isPlaying = true
@@ -314,7 +332,6 @@ Sub togglePlayback(data as Object)
         content.addHeader("Accept", "audio/aac")
         content.addHeader("Connection", "keep-alive")
         m.audioPlayer.content = content
-        sleep(200)
         m.audioPlayer.control = "prebuffer"
         m.audioPlayer.control = "play"
         m.isPlaying = true
@@ -396,9 +413,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
     if not isTabGroupFocused and not isStationGridFocused
         print "MainScene: No component has focus, forcing focus to tabGroup"
         m.tabGroup.setFocus(true)
-        if m.tabGroup.focusedChild = invalid
-            m.listenLiveTab.setFocus(true)
-        end if
+        m.listenLiveTab.setFocus(true)
         m.justEnteredStationGrid = false
         m.tabGroup.visible = true
         m.appLogo.visible = true
@@ -415,10 +430,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         if stationGrid <> invalid
             stationGrid.visible = true
+            stationGrid.itemFocused = 0 ' Reset to Bull
             m.tabGroup.setFocus(true)
-            if m.tabGroup.focusedChild = invalid
-                m.listenLiveTab.setFocus(true)
-            end if
+            m.listenLiveTab.setFocus(true)
         end if
         m.justEnteredStationGrid = false
         m.tabGroup.visible = true
@@ -430,6 +444,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             playbackUI.visible = false
             stationGrid.visible = true
         end if
+        m.registry.Write("lastPlayedStationIndex", "-1")
+        m.registry.Flush()
+        m.currentStationIndex = -1
         return true
     end if
 
@@ -438,11 +455,10 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             print "MainScene: Up/Down key pressed on tabGroup, handled by ButtonGroup"
             return false
         else if key = "right"
-            print "MainScene: Right key pressed on tabGroup, moving focus to media pane"
+            print "MainScene: Right key pressed on tabGroup, moving focus to stationGrid"
             if m.listenLiveView.visible
-                print "MainScene: Moving focus to stationGrid in listenLiveView"
                 stationGrid = m.top.FindNode("listenLiveView").FindNode("stationGrid")
-                stationGrid.itemFocused = 0
+                stationGrid.itemFocused = 0 ' Always start at Bull
                 stationGrid.setFocus(true)
                 print "MainScene: stationGrid focused item: "; stationGrid.itemFocused
                 m.justEnteredStationGrid = true
@@ -465,9 +481,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             if m.justEnteredStationGrid or focusedIndex = 0 or focusedIndex = 4
                 print "MainScene: Just entered or in leftmost column, moving focus to tabGroup"
                 m.tabGroup.setFocus(true)
-                if m.tabGroup.focusedChild = invalid
-                    m.listenLiveTab.setFocus(true)
-                end if
+                m.listenLiveTab.setFocus(true)
                 m.justEnteredStationGrid = false
                 return true
             else
@@ -476,12 +490,13 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
                 return false
             end if
         else if key = "right" or key = "up" or key = "down"
-            print "MainScene: Navigation in stationGrid, handled by PosterGrid"
-            m.currentStationIndex = m.top.FindNode("listenLiveView").FindNode("stationGrid").itemFocused
+            focusedIndex = m.top.FindNode("listenLiveView").FindNode("stationGrid").itemFocused
+            print "MainScene: Navigation in stationGrid, key: "; key; ", current index: "; focusedIndex
             m.justEnteredStationGrid = false
             return false
         else if key = "OK"
-            print "MainScene: OK key pressed on stationGrid, selecting station"
+            focusedIndex = m.top.FindNode("listenLiveView").FindNode("stationGrid").itemFocused
+            print "MainScene: OK key pressed on stationGrid, index: "; focusedIndex
             m.justEnteredStationGrid = false
             return false
         end if

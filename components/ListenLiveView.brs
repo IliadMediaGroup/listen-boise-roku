@@ -37,8 +37,8 @@ sub init()
 
     m.top.observeFieldScoped("selectedStationIndex", "onStationSelected")
     m.top.observeFieldScoped("keyEvent", "onKeyEvent")
+    m.stationGrid.observeFieldScoped("itemFocused", "onItemFocused")
 
-    m.stationGrid.setFocus(true)
     m.playbackUI.visible = false
     m.stationGrid.visible = true
     m.stationLabel.visible = false
@@ -46,8 +46,18 @@ sub init()
     m.artistLabel.visible = false
     m.albumCoverPoster.visible = false
     m.toggleButton.visible = false
-    print "ListenLiveView: Initial focus set to stationGrid"
+    m.top.callFunc("forceGridFocus", invalid)
     print "ListenLiveView: Init complete"
+end sub
+
+sub forceGridFocus()
+    print "ListenLiveView: Forcing stationGrid focus"
+    m.stationGrid.itemFocused = 0
+    m.stationGrid.setFocus(true)
+end sub
+
+sub onItemFocused()
+    print "ListenLiveView: stationGrid itemFocused: "; m.stationGrid.itemFocused
 end sub
 
 sub onStationSelected()
@@ -170,12 +180,27 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press
         return false
     end if
-    if key = "OK"
-        print "ListenLiveView: OK key pressed, selecting station at index: "; m.stationGrid.itemFocused
-        m.top.selectedStationIndex = m.stationGrid.itemFocused
+    if key = "OK" and m.stationGrid.hasFocus() and m.stationGrid.isInFocusChain()
+        focusedIndex = m.stationGrid.itemFocused
+        print "ListenLiveView: OK key pressed, selecting station at index: "; focusedIndex
+        if focusedIndex >= 0 and focusedIndex < m.stations.Count()
+            print "ListenLiveView: Setting selectedStationIndex to: "; focusedIndex
+            m.top.selectedStationIndex = focusedIndex
+            return true
+        else
+            print "ListenLiveView: Invalid itemFocused, ignoring OK"
+            return true
+        end if
+    else if key = "OK"
+        print "ListenLiveView: OK pressed but stationGrid not focused, restoring focus"
+        m.top.callFunc("forceGridFocus", invalid)
         return true
+    else if key = "right" or key = "up" or key = "down"
+        focusedIndex = m.stationGrid.itemFocused
+        print "ListenLiveView: Navigation in stationGrid, key: "; key; ", current index: "; focusedIndex
+        return false
     else if key = "back" and m.playbackUI.visible
-        print "ListenLiveView: Back key pressed in playbackUI, returning to stationGrid"
+        print "ListenLiveView: Back key pressed in playbackUI, returning to tabGroup"
         m.playbackUI.visible = false
         m.stationGrid.visible = true
         m.stationLabel.visible = false
@@ -183,7 +208,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         m.artistLabel.visible = false
         m.albumCoverPoster.visible = false
         m.toggleButton.visible = false
-        m.stationGrid.setFocus(true)
+        m.currentStationIndex = -1
+        m.stationGrid.itemFocused = 0
         scene = m.top.getScene()
         if scene <> invalid
             tabGroup = scene.FindNode("tabGroup")
@@ -194,6 +220,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             listenLiveTab = scene.FindNode("listenLiveTab")
             if tabGroup <> invalid
                 tabGroup.visible = true
+                tabGroup.setFocus(true)
                 print "ListenLiveView: tabGroup visible: "; tabGroup.visible
             end if
             if tabContainer <> invalid
@@ -212,15 +239,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 appLogo.visible = true
                 print "ListenLiveView: appLogo visible: "; appLogo.visible
             end if
-            if tabGroup <> invalid
-                tabGroup.setFocus(true)
-                if listenLiveTab <> invalid
-                    listenLiveTab.setFocus(true)
-                    print "ListenLiveView: listenLiveTab focus: "; listenLiveTab.hasFocus()
-                end if
-                print "ListenLiveView: tabGroup focus: "; tabGroup.hasFocus()
+            if listenLiveTab <> invalid
+                listenLiveTab.setFocus(true)
+                print "ListenLiveView: listenLiveTab focus: "; listenLiveTab.hasFocus()
             end if
-            print "ListenLiveView: stationGrid focus: "; m.stationGrid.hasFocus()
+            print "ListenLiveView: tabGroup focus: "; tabGroup.hasFocus()
         end if
         return true
     end if

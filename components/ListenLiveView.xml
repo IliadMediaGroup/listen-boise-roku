@@ -42,7 +42,7 @@
           width="300"
           height="40"
           font="font:SmallSystemFont"
-          color="#FFFFFF"
+          color="0xFFFFFF"
           horizAlign="center"
           visible="false" />
         <Label
@@ -51,7 +51,7 @@
           width="300"
           height="40"
           font="font:SmallSystemFont"
-          color="#FFFFFF"
+          color="0xFFFFFF"
           horizAlign="center"
           visible="false" />
         <Label
@@ -60,7 +60,7 @@
           width="300"
           height="40"
           font="font:SmallSystemFont"
-          color="#FFFFFF"
+          color="0xFFFFFF"
           horizAlign="center"
           visible="false" />
         <Poster
