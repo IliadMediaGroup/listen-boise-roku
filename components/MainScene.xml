@@ -57,15 +57,6 @@
                     minWidth="120"
                     textColor="0xFFFFFFFF"
                     focusedTextColor="0xFFFFFFFF" />
-                <Poster
-                    id="toggleButton"
-                    uri="pkg:/images/play_pause.png"
-                    width="48"
-                    height="48"
-                    translation="[0, 0]"
-                    loadDisplayMode="scaleToFit"
-                    visible="true"
-                    focusable="true" />
             </ButtonGroup>
         </Group>
         <Group
