@@ -29,20 +29,12 @@ Sub Init()
         {title: "96.5 The Alternative", url: "https://ice9.securenetsystems.net/KQBLHD3", poster: "pkg:/images/alt.png", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KQBLHD3.xml"}
     ]
 
-    content = CreateObject("roSGNode", "ContentNode")
-    for each station in m.stations
-        child = content.CreateChild("ContentNode")
-        child.title = station.title
-        child.url = station.url
-        child.HDPosterUrl = station.poster
-        child.SDPosterUrl = station.poster
-    end for
-    m.stationGrid.content = content
     m.stationGrid.visible = true
     m.playbackUI.visible = false
     m.stationGrid.numColumns = 4
     m.stationGrid.itemSize = "[200, 200]"
     m.stationGrid.itemSpacing = "[20, 20]"
+    m.isGridContentLoaded = false
 
     print "ListenLiveView: Setting observers"
     m.stationGrid.observeField("itemFocused", "OnStationGridItemFocused")
@@ -54,14 +46,37 @@ Sub Init()
     print "ListenLiveView: Init complete"
 End Sub
 
+Sub LoadStationGridContent()
+    if m.isGridContentLoaded
+        print "ListenLiveView: stationGrid content already loaded"
+        return
+    end if
+
+    print "ListenLiveView: Loading stationGrid content"
+    content = CreateObject("roSGNode", "ContentNode")
+    for each station in m.stations
+        child = content.CreateChild("ContentNode")
+        child.title = station.title
+        child.url = station.url
+        child.HDPosterUrl = station.poster
+        child.SDPosterUrl = station.poster
+    end for
+    m.stationGrid.content = content
+    m.isGridContentLoaded = true
+    print "ListenLiveView: stationGrid content loaded"
+End Sub
+
 Sub OnStationGridItemFocused()
     focusedIndex = m.stationGrid.itemFocused
-    print "ListenLiveView: stationGrid itemFocused: "; focusedIndex
+    print "ListenLiveView: stationGrid itemFocused: "; focusedIndex; ", grid hasFocus: "; m.stationGrid.hasFocus()
+    if not m.isGridContentLoaded and m.stationGrid.hasFocus()
+        LoadStationGridContent()
+    end if
 End Sub
 
 Sub OnStationGridItemSelected()
     selectedIndex = m.stationGrid.itemSelected
-    print "ListenLiveView: stationGrid itemSelected: "; selectedIndex
+    print "ListenLiveView: stationGrid itemSelected: "; selectedIndex; ", grid hasFocus: "; m.stationGrid.hasFocus()
     m.top.selectedStationIndex = selectedIndex
 End Sub
 
@@ -153,7 +168,7 @@ Function OnToggleButtonKeyEvent() As Boolean
 End Function
 
 Function onKeyEvent(key as String, press as Boolean) As Boolean
-    print "ListenLiveView: Key event - Key: "; key; ", Press: "; press
+    print "ListenLiveView: Key event - Key: "; key; ", Press: "; press; ", stationGrid hasFocus: "; m.stationGrid.hasFocus()
     if not press
         return false
     end if
@@ -163,7 +178,6 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
             print "ListenLiveView: Back key pressed in playbackUI, returning to tabGroup"
             m.stationGrid.visible = true
             m.playbackUI.visible = false
-            m.stationGrid.itemFocused = 0
             m.tabGroup.visible = true
             m.tabContainer.visible = true
             m.contentStack.visible = true
@@ -188,6 +202,16 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
                 m.tabGroup.setFocus(true)
                 m.top.getScene().FindNode("listenLiveTab").setFocus(true)
                 return true
+            end if
+        else if key = "OK"
+            focusedIndex = m.stationGrid.itemFocused
+            print "ListenLiveView: OK key pressed in stationGrid, index: "; focusedIndex; ", grid hasFocus: "; m.stationGrid.hasFocus()
+            if m.stationGrid.hasFocus() and m.isGridContentLoaded
+                m.stationGrid.itemSelected = focusedIndex
+                return true
+            else
+                print "ListenLiveView: stationGrid not focused or content not loaded, ignoring OK key"
+                return false
             end if
         end if
     end if

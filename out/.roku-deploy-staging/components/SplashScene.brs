@@ -6,7 +6,7 @@ Sub Init()
            return
        end if
        m.timer = CreateObject("roSGNode", "Timer")
-       m.timer.duration = 1.0 ' 1 second
+       m.timer.duration = 3.0 ' 3 second
        m.timer.observeField("fire", "OnTimerFire")
        m.timer.control = "start"
        m.top.setFocus(true)

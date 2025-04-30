@@ -3,18 +3,16 @@ Sub Init()
     m.audioPlayer = m.top.FindNode("audioPlayer")
     m.tabGroup = m.top.FindNode("tabGroup")
     m.listenLiveTab = m.top.FindNode("listenLiveTab")
-    m.newsTab = m.top.FindNode("newsTab")
     m.podcastsTab = m.top.FindNode("podcastsTab")
     m.NowPlayingButton = m.top.FindNode("NowPlayingButton")
     m.toggleButton = m.top.FindNode("toggleButton")
     m.contentStack = m.top.FindNode("contentStack")
     m.listenLiveView = m.top.FindNode("listenLiveView")
-    m.newsView = m.top.FindNode("newsView")
-    m.podcastsView = m.top.FindNode("podcastsView")
     m.appLogo = m.top.FindNode("appLogo")
     m.background = m.top.FindNode("background")
+    m.podcastsView = invalid ' Defer podcastsView creation
 
-    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.newsTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.newsView = invalid or m.podcastsView = invalid or m.appLogo = invalid or m.background = invalid
+    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.appLogo = invalid or m.background = invalid
         print "ERROR: Node not found"
         return
     end if
@@ -31,7 +29,7 @@ Sub Init()
         {url: "https://ice9.securenetsystems.net/KZMG", name: "My 102.7", format: "aac"},
         {url: "https://ice64.securenetsystems.net/KSRV", name: "Bob FM 96.1", format: "aac"},
         {url: "https://ice9.securenetsystems.net/KWYD", name: "Wild 101.1", format: "aac"},
-        {url: "https://ice64.securenetsystems.net/KQBLHD2", name: "IRock  egregious 99.1 FM", format: "aac"},
+        {url: "https://ice64.securenetsystems.net/KQBLHD2", name: "IRock egregious 99.1 FM", format: "aac"},
         {url: "https://ice64.securenetsystems.net/KSRVHD2", name: "Fox Sports 99.9", format: "aac"},
         {url: "https://ice5.securenetsystems.net/KKOO", name: "101.5 Kool FM", format: "aac"},
         {url: "https://ice9.securenetsystems.net/KQBLHD3", name: "96.5 The Alternative", format: "aac"}
@@ -52,9 +50,6 @@ Sub Init()
 
     print "MainScene: Initial view set to listenLiveView"
     m.listenLiveView.visible = true
-    m.newsView.visible = false
-    m.podcastsView.visible = false
-
     m.appLogo.visible = true
     m.tabGroup.visible = true
     m.contentStack.visible = true
@@ -65,8 +60,19 @@ Sub Init()
     print "MainScene: Setting initial focus to tabGroup"
     m.tabGroup.focusable = true
     m.tabGroup.setFocus(true)
+    EnsureTabGroupFocus()
     print "MainScene: tabGroup focus: "; m.tabGroup.hasFocus(); ", listenLiveTab focus: "; m.listenLiveTab.hasFocus()
     print "MainScene: Init complete"
+End Sub
+
+Sub EnsureTabGroupFocus()
+    if not m.tabGroup.hasFocus()
+        print "MainScene: Retrying tabGroup focus"
+        m.tabGroup.setFocus(true)
+        if m.tabGroup.focusedChild = invalid
+            m.listenLiveTab.setFocus(true)
+        end if
+    end if
 End Sub
 
 sub onButtonSelected()
@@ -76,33 +82,37 @@ sub onButtonSelected()
     if selectedIndex = 0
         print "MainScene: Switching to listenLiveView"
         m.listenLiveView.visible = true
-        m.newsView.visible = false
-        m.podcastsView.visible = false
+        if m.podcastsView <> invalid
+            m.podcastsView.visible = false
+        end if
         m.top.FindNode("listenLiveView").FindNode("stationGrid").visible = true
         m.tabGroup.setFocus(true)
         m.listenLiveTab.setFocus(true)
+        EnsureTabGroupFocus()
         m.justEnteredStationGrid = false
         m.background.visible = true
     else if selectedIndex = 1
-        print "MainScene: Switching to newsView"
+        print "MainScene: Switching to podcastsView"
+        if m.podcastsView = invalid
+            print "MainScene: Creating podcastsView dynamically"
+            m.podcastsView = m.top.CreateChild("PodcastsView")
+            m.podcastsView.id = "podcastsView"
+            m.podcastsView.translation = "[270, 250]"
+            m.podcastsView.visible = true
+            if m.podcastsView = invalid
+                print "ERROR: Failed to create podcastsView"
+                m.listenLiveView.visible = true
+                m.tabGroup.setFocus(true)
+                EnsureTabGroupFocus()
+                return
+            end if
+        end if
         m.listenLiveView.visible = false
-        m.newsView.visible = true
-        m.podcastsView.visible = false
-        m.top.FindNode("newsView").setFocus(true)
+        m.podcastsView.visible = true
+        m.podcastsView.setFocus(true)
         m.background.visible = true
     else if selectedIndex = 2
-        print "MainScene: Switching to podcastsView"
-        m.listenLiveView.visible = false
-        m.newsView.visible = false
-        m.podcastsView.visible = true
-        m.top.FindNode("podcastsView").setFocus(true)
-        m.background.visible = true
-    else if selectedIndex = 3
         print "MainScene: Showing NowPlaying UI in listenLiveView"
-        if m.currentStationIndex = -1
-            print "MainScene: No station selected, cannot show Now Playing"
-            return
-        end if
         playbackUI = m.listenLiveView.FindNode("playbackUI")
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         stationLabel = m.listenLiveView.FindNode("stationLabel")
@@ -110,13 +120,28 @@ sub onButtonSelected()
             print "ERROR: MainScene - Playback UI nodes not found"
             return
         end if
+        if m.currentStationIndex = -1
+            print "MainScene: No station selected, showing station grid"
+            stationGrid.visible = true
+            playbackUI.visible = false
+            stationLabel.text = "Please select a station"
+            m.tabGroup.visible = true
+            m.appLogo.visible = true
+            m.contentStack.visible = true
+            m.background.visible = true
+            m.tabGroup.setFocus(true)
+            m.listenLiveTab.setFocus(true)
+            EnsureTabGroupFocus()
+            return
+        end if
         stationGrid.visible = false
         playbackUI.visible = true
         stationLabel.text = m.stations[m.currentStationIndex].name
         m.appLogo.visible = true
         m.tabGroup.visible = false
-        m.newsView.visible = false
-        m.podcastsView.visible = false
+        if m.podcastsView <> invalid
+            m.podcastsView.visible = false
+        end if
         m.contentStack.visible = true
         m.background.visible = true
         m.listenLiveView.FindNode("toggleButton").setFocus(true)
@@ -188,8 +213,9 @@ Sub OnStationSelected()
     print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
     m.appLogo.visible = true
     m.tabGroup.visible = false
-    m.newsView.visible = false
-    m.podcastsView.visible = false
+    if m.podcastsView <> invalid
+        m.podcastsView.visible = false
+    end if
     m.contentStack.visible = true
     m.background.visible = true
     m.listenLiveView.FindNode("toggleButton").setFocus(true)
@@ -214,49 +240,24 @@ Sub OnToggleButton()
     print "MainScene: Current station index: "; m.currentStationIndex
     print "MainScene: Is playing: "; m.isPlaying
     if m.currentStationIndex = -1
-        stationGrid = m.listenLiveView.FindNode("stationGrid")
-        if stationGrid <> invalid
-            m.currentStationIndex = 0 ' Default to 101.9 The Bull
-            print "MainScene: No station selected, defaulting to 101.9 The Bull (index 0)"
-        else
-            print "ERROR: MainScene - stationGrid not found"
-            return
-        end if
-        m.registry.Write("lastPlayedStationIndex", m.currentStationIndex.ToStr())
-        m.registry.Flush()
+        print "MainScene: No station selected, showing station grid"
         playbackUI = m.listenLiveView.FindNode("playbackUI")
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         stationLabel = m.listenLiveView.FindNode("stationLabel")
-        toggleButton = m.listenLiveView.FindNode("toggleButton")
-        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid or toggleButton = invalid
+        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
             print "ERROR: MainScene - Playback UI nodes not found"
             return
         end if
-        stationGrid.visible = false
-        playbackUI.visible = true
-        stationLabel.text = m.stations[m.currentStationIndex].name
-        content = CreateObject("roSGNode", "ContentNode")
-        timestamp = (CreateObject("roDateTime")).AsSeconds().ToStr()
-        content.url = m.stations[m.currentStationIndex].url + "?t=" + timestamp
-        content.streamFormat = m.stations[m.currentStationIndex].format
-        content.streamQualities = ["SD"]
-        content.streamBitrates = [128]
-        content.addHeader("User-Agent", "Roku")
-        content.addHeader("Accept", "audio/aac")
-        content.addHeader("Connection", "keep-alive")
-        m.audioPlayer.content = content
-        m.audioPlayer.control = "prebuffer"
-        m.audioPlayer.control = "play"
-        m.isPlaying = true
-        print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
+        stationGrid.visible = true
+        playbackUI.visible = false
+        stationLabel.text = "Please select a station"
+        m.tabGroup.visible = true
         m.appLogo.visible = true
-        m.tabGroup.visible = false
-        m.newsView.visible = false
-        m.podcastsView.visible = false
         m.contentStack.visible = true
         m.background.visible = true
-        m.listenLiveView.FindNode("toggleButton").setFocus(true)
-        m.top.setFocus(true)
+        m.tabGroup.setFocus(true)
+        m.listenLiveTab.setFocus(true)
+        EnsureTabGroupFocus()
         return
     end if
     togglePlayback({})
@@ -317,13 +318,15 @@ Sub restoreMainUI(data as Object)
     m.tabGroup.visible = true
     m.contentStack.visible = true
     m.listenLiveView.visible = true
-    m.newsView.visible = false
-    m.podcastsView.visible = false
+    if m.podcastsView <> invalid
+        m.podcastsView.visible = false
+    end if
     m.background.visible = true
     m.tabGroup.setFocus(true)
     if m.tabGroup.focusedChild = invalid
         m.listenLiveTab.setFocus(true)
     end if
+    EnsureTabGroupFocus()
 End Sub
 
 Sub OnAudioStateChange()
@@ -348,9 +351,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
     isTabGroupHidden = m.tabGroup.visible = false
 
     if isPlaybackUIVisible and isTabGroupHidden
-        print "MainScene: PlaybackUI visible and tabGroup hidden, ignoring main menu key events"
-        if key = "up" or key = "down" or key = "left" or key = "right" or key = "OK"
-            print "MainScene: Blocking menu navigation key: "; key
+        print "MainScene: PlaybackUI visible and tabGroup hidden, only blocking navigation keys"
+        if key = "up" or key = "down" or key = "left" or key = "right"
+            print "MainScene: Blocking navigation key: "; key
             return true
         end if
     end if
@@ -370,7 +373,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
         focusedChildId = m.tabGroup.focusedChild.id
     end if
     print "MainScene: Current focus - scene: "; m.top.hasFocus(); ", tabGroup: "; m.tabGroup.hasFocus(); ", focused button: "; focusedChildId
-    print "MainScene: Current view visibility - listenLiveView: "; m.listenLiveView.visible; ", newsView: "; m.newsView.visible; ", podcastsView: "; m.podcastsView.visible
+    podcastsViewVisibility = "invalid"
+    if m.podcastsView <> invalid
+        podcastsViewVisibility = m.podcastsView.visible
+    end if
+    print "MainScene: Current view visibility - listenLiveView: "; m.listenLiveView.visible; ", podcastsView: "; podcastsViewVisibility
     if m.listenLiveView.visible
         print "MainScene: stationGrid focus: "; m.top.FindNode("listenLiveView").FindNode("stationGrid").hasFocus()
     else
@@ -384,7 +391,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
         print "MainScene: No component has focus, forcing focus to tabGroup"
         m.tabGroup.setFocus(true)
         m.listenLiveTab.setFocus(true)
-        m.justEnteredStationGrid = false
+        EnsureTabGroupFocus()
         m.tabGroup.visible = true
         m.appLogo.visible = true
         m.contentStack.visible = true
@@ -395,14 +402,15 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back"
         print "MainScene: Back key pressed, returning to main menu"
         m.listenLiveView.visible = true
-        m.newsView.visible = false
-        m.podcastsView.visible = false
+        if m.podcastsView <> invalid
+            m.podcastsView.visible = false
+        end if
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         if stationGrid <> invalid
             stationGrid.visible = true
-            stationGrid.itemFocused = 0 ' Reset to Bull
             m.tabGroup.setFocus(true)
             m.listenLiveTab.setFocus(true)
+            EnsureTabGroupFocus()
         end if
         m.justEnteredStationGrid = false
         m.tabGroup.visible = true
@@ -425,21 +433,28 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             print "MainScene: Up/Down key pressed on tabGroup, handled by ButtonGroup"
             return false
         else if key = "right"
-            print "MainScene: Right key pressed on tabGroup, moving focus to stationGrid"
+            print "MainScene: Right key pressed on tabGroup, focusing stationGrid"
             if m.listenLiveView.visible
                 stationGrid = m.top.FindNode("listenLiveView").FindNode("stationGrid")
-                stationGrid.itemFocused = 0 ' Always start at Bull
-                stationGrid.setFocus(true)
-                print "MainScene: stationGrid focused item: "; stationGrid.itemFocused
-                m.justEnteredStationGrid = true
-            else if m.newsView.visible
-                print "MainScene: Moving focus to newsView"
-                m.top.FindNode("newsView").setFocus(true)
-            else if m.podcastsView.visible
+                if stationGrid <> invalid and stationGrid.visible
+                    stationGrid.setFocus(true)
+                    if not stationGrid.hasFocus()
+                        print "MainScene: Retrying stationGrid focus"
+                        stationGrid.setFocus(true)
+                    end if
+                    print "MainScene: stationGrid focused_rectangle: "; stationGrid.boundingRect()
+                    print "MainScene: stationGrid focused item: "; stationGrid.itemFocused; ", hasFocus: "; stationGrid.hasFocus()
+                    m.justEnteredStationGrid = true
+                    return true
+                else
+                    print "ERROR: MainScene - stationGrid not found or not visible"
+                    return false
+                end if
+            else if m.podcastsView <> invalid and m.podcastsView.visible
                 print "MainScene: Moving focus to podcastsView"
-                m.top.FindNode("podcastsView").setFocus(true)
+                m.podcastsView.setFocus(true)
+                return true
             end if
-            return true
         else if key = "left"
             print "MainScene: Left key pressed on tabGroup, no action (leftmost component)"
             return true
@@ -452,6 +467,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
                 print "MainScene: Just entered or in leftmost column, moving focus to tabGroup"
                 m.tabGroup.setFocus(true)
                 m.listenLiveTab.setFocus(true)
+                EnsureTabGroupFocus()
                 m.justEnteredStationGrid = false
                 return true
             else

@@ -34,14 +34,6 @@
                     textColor="0xFFFFFFFF"
                     focusedTextColor="0xFFFFFFFF" />
                 <Button
-                    id="newsTab"
-                    text="News"
-                    focusable="true"
-                    visible="true"
-                    minWidth="120"
-                    textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFFFFFF" />
-                <Button
                     id="podcastsTab"
                     text="Podcasts"
                     focusable="true"
@@ -63,8 +55,6 @@
             id="contentStack"
             translation="[270, 250]">
             <ListenLiveView id="listenLiveView" visible="true" />
-            <NewsView id="newsView" visible="false" />
-            <PodcastsView id="podcastsView" visible="false" />
         </Group>
         <Audio id="audioPlayer" />
     </children>
