@@ -2,16 +2,15 @@
 <component name="ListenLiveView" extends="Group">
   <interface>
     <field id="selectedStationIndex" type="integer" onChange="onStationSelected" />
-    <field id="stations" type="array" /> <!-- Added to accept stations -->
+    <field id="stations" type="array" />
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
   <children>
-    <!-- Station Grid -->
     <Group translation="[0, 0]">
       <PosterGrid
         id="stationGrid"
         translation="[0, 0]"
-        itemSize="[150, 150]"
+        itemSize="[200, 200]"
         itemSpacing="[20, 20]"
         numColumns="4"
         numRows="2"
@@ -19,7 +18,6 @@
         visible="true"
         focusable="true" />
     </Group>
-    <!-- Playback UI -->
     <Group translation="[0, 0]">
       <LayoutGroup
         id="playbackUI"

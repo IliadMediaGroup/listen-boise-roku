@@ -21,6 +21,7 @@ Sub Init()
     m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
     m.top.observeFieldScoped("keyEvent", "OnKeyEvent")
     m.listenLiveView.observeFieldScoped("selectedStationIndex", "OnStationSelected")
+    m.listenLiveView.observeFieldScoped("toggleButtonPressed", "OnToggleButtonPressed")
 
     m.stations = [
         {url: "https://ice64.securenetsystems.net/KQBL", name: "101.9 The Bull", format: "aac", title: "101.9 The Bull", poster: "pkg:/images/bull.png", xmlUrl: "https://streamdb6web.securenetsystems.net/player_status_update/KQBL.xml"},
@@ -37,20 +38,12 @@ Sub Init()
     m.listenLiveView.stations = m.stations
 
     m.registry = CreateObject("roRegistrySection", "ListenBoisePrefs")
-    lastPlayedIndex = m.registry.Read("lastPlayedStationIndex")
-    isPlaying = m.registry.Read("isPlaying")
+    print "MainScene: Clearing registry on launch"
+    m.registry.Delete("lastPlayedStationIndex")
+    m.registry.Delete("isPlaying")
+    m.registry.Flush()
     m.currentStationIndex = -1
-    m.isPlaying = (isPlaying = "true")
-
-    if lastPlayedIndex <> invalid and lastPlayedIndex <> "" and lastPlayedIndex.ToInt() >= 0 and lastPlayedIndex.ToInt() < m.stations.Count()
-        m.currentStationIndex = lastPlayedIndex.ToInt()
-        print "MainScene: Restoring last played station index: "; m.currentStationIndex
-        stationGrid = m.listenLiveView.FindNode("stationGrid")
-        if stationGrid <> invalid
-            stationGrid.jumpToItem = m.currentStationIndex
-            print "MainScene: Set stationGrid to focus item: "; m.currentStationIndex
-        end if
-    end if
+    m.isPlaying = false
 
     print "MainScene: Initial view set to listenLiveView"
     m.listenLiveView.visible = true
@@ -167,9 +160,19 @@ sub onButtonSelected()
     end if
 end sub
 
+Sub ShowPlaybackUI(data as Object)
+    print "MainScene: ShowPlaybackUI called"
+End Sub
+
+Sub OnToggleButtonPressed()
+    print "MainScene: toggleButtonPressed observed from ListenLiveView"
+    OnToggleButton()
+End Sub
+
 Sub OnStationSelected()
     selectedIndex = m.listenLiveView.selectedStationIndex
     print "MainScene: Station selected at index: "; selectedIndex; ", Name: "; m.stations[selectedIndex].name
+    print "MainScene: Audio player state before playback: "; m.audioPlayer.state
 
     if selectedIndex < 0 or selectedIndex >= m.stations.Count()
         print "MainScene: Invalid station index: "; selectedIndex; ", aborting playback"
@@ -180,15 +183,7 @@ Sub OnStationSelected()
     if m.audioPlayer <> invalid
         m.audioPlayer.control = "stop"
         m.audioPlayer.content = invalid
-        m.audioPlayer.unobserveFieldScoped("state")
-        m.audioPlayer = invalid
     end if
-    m.audioPlayer = m.top.FindNode("audioPlayer")
-    if m.audioPlayer = invalid
-        print "ERROR: MainScene - audioPlayer not found after recreation"
-        return
-    end if
-    m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
 
     m.currentStationIndex = selectedIndex
     m.registry.Write("lastPlayedStationIndex", selectedIndex.ToStr())
@@ -208,8 +203,8 @@ Sub OnStationSelected()
     stationLabel.text = m.stations[m.currentStationIndex].name
     content = CreateObject("roSGNode", "ContentNode")
     timestamp = (CreateObject("roDateTime")).AsSeconds().ToStr()
-    content.url = m.stations[m.currentStationIndex].url + "?t=" + timestamp
-    content.streamFormat = m.stations[m.currentStationIndex].format
+    content.url = m.stations[selectedIndex].url + "?t=" + timestamp
+    content.streamFormat = m.stations[selectedIndex].format
     content.streamQualities = ["SD"]
     content.streamBitrates = [128]
     content.addHeader("User-Agent", "Roku")
@@ -217,6 +212,7 @@ Sub OnStationSelected()
     content.addHeader("Connection", "keep-alive")
     m.audioPlayer.content = content
     m.audioPlayer.control = "prebuffer"
+    sleep(500) ' Add delay for stream readiness
     m.audioPlayer.control = "play"
     m.isPlaying = true
     m.registry.Write("isPlaying", "true")
@@ -227,7 +223,7 @@ Sub OnStationSelected()
 End Sub
 
 Sub OnToggleButton()
-    print "MainScene: Toggle button pressed"
+    print "MainScene: Toggle button pressed (called from ListenLiveView)"
     print "MainScene: Current station index: "; m.currentStationIndex
     print "MainScene: Is playing: "; m.isPlaying
     if m.currentStationIndex = -1
@@ -236,7 +232,7 @@ Sub OnToggleButton()
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         stationLabel = m.listenLiveView.FindNode("stationLabel")
         if stationGrid = invalid
-            print "ERROR: MainScene - stationGrideful not found"
+            print "ERROR: MainScene - stationGrid not found"
             return
         end if
         stationGrid.visible = true
@@ -280,15 +276,7 @@ Sub togglePlayback(data as Object)
         if m.audioPlayer <> invalid
             m.audioPlayer.control = "stop"
             m.audioPlayer.content = invalid
-            m.audioPlayer.unobserveFieldScoped("state")
-            m.audioPlayer = invalid
         end if
-        m.audioPlayer = m.top.FindNode("audioPlayer")
-        if m.audioPlayer = invalid
-            print "ERROR: MainScene - audioPlayer not found after recreation"
-            return
-        end if
-        m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
         content = CreateObject("roSGNode", "ContentNode")
         timestamp = (CreateObject("roDateTime")).AsSeconds().ToStr()
         content.url = m.stations[m.currentStationIndex].url + "?t=" + timestamp
@@ -300,6 +288,7 @@ Sub togglePlayback(data as Object)
         content.addHeader("Connection", "keep-alive")
         m.audioPlayer.content = content
         m.audioPlayer.control = "prebuffer"
+        sleep(500) ' Add delay for stream readiness
         m.audioPlayer.control = "play"
         m.isPlaying = true
         m.registry.Write("isPlaying", "true")
@@ -370,7 +359,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
 
     isTabGroupFocused = m.tabGroup.hasFocus() or m.tabGroup.focusedChild <> invalid
-
     if not isTabGroupFocused
         print "MainScene: No component has focus, forcing focus to tabGroup"
         m.tabGroup.setFocus(true)
@@ -399,9 +387,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             playbackUI.visible = false
             stationGrid.visible = true
         end if
-        m.registry.Write("lastPlayedStationIndex", "-1")
-        m.registry.Flush()
-        m.currentStationIndex = -1
         return true
     end if
 

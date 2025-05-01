@@ -18,7 +18,7 @@ Sub Init()
     m.stationGrid.numColumns = 4
     m.stationGrid.itemSize = "[150, 150]"
     m.stationGrid.itemSpacing = "[20, 20]"
-    m.stationGrid.setFocus(true)
+    m.stationGrid.translation = "[60, -4]"
 
     print "ListenLiveView: Loading stationGrid content"
     LoadStationGridContent()
@@ -130,15 +130,15 @@ Sub onStationSelected()
     appLogo = m.top.getScene().FindNode("appLogo")
     background = m.top.getScene().FindNode("background")
 
-    print "ListenLiveView: Hiding MainScene UI elements using FindNode (excluding appLogo)"
+    print "ListenLiveView: Managing MainScene UI elements"
     if appLogo <> invalid
         appLogo.visible = true
     end if
     if tabGroup <> invalid
-        tabGroup.visible = false
+        tabGroup.visible = true
     end if
     if tabContainer <> invalid
-        tabContainer.visible = false
+        tabContainer.visible = true
     end if
     if contentStack <> invalid
         contentStack.visible = true
@@ -245,6 +245,7 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
             return true
         else if key = "OK" or key = "play"
             print "ListenLiveView: OK or play key pressed in playbackUI, notifying MainScene"
+            print "DEBUG: Scene ID: "; m.top.getScene().id
             m.top.getScene().callFunc("OnToggleButton", {})
             return true
         end if
