@@ -5,21 +5,19 @@ Sub Init()
     m.listenLiveTab = m.top.FindNode("listenLiveTab")
     m.podcastsTab = m.top.FindNode("podcastsTab")
     m.NowPlayingButton = m.top.FindNode("NowPlayingButton")
-    m.toggleButton = m.top.FindNode("toggleButton")
     m.contentStack = m.top.FindNode("contentStack")
     m.listenLiveView = m.top.FindNode("listenLiveView")
     m.appLogo = m.top.FindNode("appLogo")
     m.background = m.top.FindNode("background")
     m.podcastsView = invalid ' Defer podcastsView creation
 
-    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.appLogo = invalid or m.background = invalid
+    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.appLogo = invalid or m.background = invalid
         print "ERROR: Node not found"
         return
     end if
 
     print "MainScene: Setting observers"
     m.tabGroup.observeFieldScoped("buttonSelected", "onButtonSelected")
-    m.toggleButton.observeFieldScoped("keyEvent", "OnToggleButtonKeyEvent")
     m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
     m.top.observeFieldScoped("keyEvent", "OnKeyEvent")
     m.listenLiveView.observeFieldScoped("selectedStationIndex", "OnStationSelected")
@@ -37,15 +35,9 @@ Sub Init()
 
     m.registry = CreateObject("roRegistrySection", "ListenBoisePrefs")
     lastPlayedIndex = m.registry.Read("lastPlayedStationIndex")
-    if lastPlayedIndex = invalid or lastPlayedIndex = ""
-        m.currentStationIndex = -1
-    else
-        m.currentStationIndex = lastPlayedIndex.ToInt()
-        if m.currentStationIndex < 0 or m.currentStationIndex >= m.stations.Count()
-            m.currentStationIndex = -1
-        end if
-    end if
-    m.isPlaying = false
+    isPlaying = m.registry.Read("isPlaying")
+    m.currentStationIndex = -1 ' No auto-selection
+    m.isPlaying = (isPlaying = "true") ' Restore pause/play state
     m.justEnteredStationGrid = false
 
     print "MainScene: Initial view set to listenLiveView"
@@ -116,8 +108,23 @@ sub onButtonSelected()
         playbackUI = m.listenLiveView.FindNode("playbackUI")
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         stationLabel = m.listenLiveView.FindNode("stationLabel")
-        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
-            print "ERROR: MainScene - Playback UI nodes not found"
+        toggleButton = m.listenLiveView.FindNode("toggleButton")
+        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid or toggleButton = invalid
+            print "MainScene: Playback UI not loaded or nodes not found, showing station grid"
+            stationGrid.visible = true
+            if playbackUI <> invalid
+                playbackUI.visible = false
+            end if
+            if stationLabel <> invalid
+                stationLabel.text = "Please select a station"
+            end if
+            m.tabGroup.visible = true
+            m.appLogo.visible = true
+            m.contentStack.visible = true
+            m.background.visible = true
+            m.tabGroup.setFocus(true)
+            m.listenLiveTab.setFocus(true)
+            EnsureTabGroupFocus()
             return
         end if
         if m.currentStationIndex = -1
@@ -144,7 +151,7 @@ sub onButtonSelected()
         end if
         m.contentStack.visible = true
         m.background.visible = true
-        m.listenLiveView.FindNode("toggleButton").setFocus(true)
+        toggleButton.setFocus(true)
         m.top.setFocus(true)
     end if
 
@@ -162,7 +169,7 @@ end sub
 
 Sub OnStationSelected()
     selectedIndex = m.listenLiveView.selectedStationIndex
-    print "MainScene: Station selected at index: "; selectedIndex
+    print "MainScene: Station selected at index: "; selectedIndex; ", Name: "; m.stations[selectedIndex].name
 
     if selectedIndex < 0 or selectedIndex >= m.stations.Count()
         print "MainScene: Invalid station index: "; selectedIndex; ", aborting playback"
@@ -183,7 +190,8 @@ Sub OnStationSelected()
     m.audioPlayer.observeFieldScoped("state", "OnAudioStateChange")
 
     m.currentStationIndex = selectedIndex
-    m.registry.Write("lastPlayedStationIndex", m.currentStationIndex.ToStr())
+    m.registry.Write("lastPlayedStationIndex", selectedIndex.ToStr())
+    m.registry.Write("isPlaying", m.isPlaying.ToStr())
     m.registry.Flush()
 
     playbackUI = m.listenLiveView.FindNode("playbackUI")
@@ -210,6 +218,8 @@ Sub OnStationSelected()
     m.audioPlayer.control = "prebuffer"
     m.audioPlayer.control = "play"
     m.isPlaying = true
+    m.registry.Write("isPlaying", "true")
+    m.registry.Flush()
     print "MainScene: Playing station - "; m.stations[m.currentStationIndex].name
     m.appLogo.visible = true
     m.tabGroup.visible = false
@@ -218,22 +228,11 @@ Sub OnStationSelected()
     end if
     m.contentStack.visible = true
     m.background.visible = true
-    m.listenLiveView.FindNode("toggleButton").setFocus(true)
+    toggleButton.setFocus(true)
+    print "MainScene: toggleButton focus: "; toggleButton.hasFocus()
     m.top.setFocus(true)
     print "MainScene: Scene focus after station selection: "; m.top.hasFocus()
 End Sub
-
-function OnToggleButtonKeyEvent() as Boolean
-    key = m.toggleButton.keyEvent.key
-    press = m.toggleButton.keyEvent.press
-    print "MainScene: Toggle button key event - Key: "; key; ", Press: "; press
-    if press and key = "OK"
-        print "MainScene: OK key pressed on toggleButton"
-        OnToggleButton()
-        return true
-    end if
-    return false
-end function
 
 Sub OnToggleButton()
     print "MainScene: Toggle button pressed"
@@ -244,13 +243,17 @@ Sub OnToggleButton()
         playbackUI = m.listenLiveView.FindNode("playbackUI")
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         stationLabel = m.listenLiveView.FindNode("stationLabel")
-        if playbackUI = invalid or stationGrid = invalid or stationLabel = invalid
-            print "ERROR: MainScene - Playback UI nodes not found"
+        if stationGrid = invalid
+            print "ERROR: MainScene - stationGrid not found"
             return
         end if
         stationGrid.visible = true
-        playbackUI.visible = false
-        stationLabel.text = "Please select a station"
+        if playbackUI <> invalid
+            playbackUI.visible = false
+        end if
+        if stationLabel <> invalid
+            stationLabel.text = "Please select a station"
+        end if
         m.tabGroup.visible = true
         m.appLogo.visible = true
         m.contentStack.visible = true
@@ -275,6 +278,8 @@ Sub togglePlayback(data as Object)
         m.audioPlayer.control = "stop"
         m.audioPlayer.content = invalid
         m.isPlaying = false
+        m.registry.Write("isPlaying", "false")
+        m.registry.Flush()
         print "MainScene: Playback stopped"
     else
         if m.currentStationIndex = -1
@@ -306,6 +311,8 @@ Sub togglePlayback(data as Object)
         m.audioPlayer.control = "prebuffer"
         m.audioPlayer.control = "play"
         m.isPlaying = true
+        m.registry.Write("isPlaying", "true")
+        m.registry.Flush()
         print "MainScene: Playback resumed - "; m.stations[m.currentStationIndex].name
         m.top.setFocus(true)
     end if
@@ -336,10 +343,16 @@ Sub OnAudioStateChange()
         errorMsg = m.audioPlayer.errorMsg
         print "MainScene: Audio error - Code: "; errorCode; ", Message: "; errorMsg
         m.isPlaying = false
+        m.registry.Write("isPlaying", "false")
+        m.registry.Flush()
     else if m.audioPlayer.state = "playing"
         m.isPlaying = true
+        m.registry.Write("isPlaying", "true")
+        m.registry.Flush()
     else if m.audioPlayer.state = "stopped"
         m.isPlaying = false
+        m.registry.Write("isPlaying", "false")
+        m.registry.Flush()
     end if
 End Sub
 

@@ -1,19 +1,19 @@
 Sub Init()
     print "ListenLiveView: Entering init"
     m.stationGrid = m.top.FindNode("stationGrid")
-    m.playbackUI = m.top.FindNode("playbackUI")
-    m.toggleButton = m.top.FindNode("toggleButton")
-    m.stationLabel = m.top.FindNode("stationLabel")
-    m.songLabel = m.top.FindNode("songLabel")
-    m.artistLabel = m.top.FindNode("artistLabel")
-    m.albumCoverPoster = m.top.FindNode("albumCoverPoster")
+    m.playbackUI = invalid ' Defer playbackUI initialization
+    m.toggleButton = invalid ' Defer toggleButton
+    m.stationLabel = invalid ' Defer stationLabel
+    m.songLabel = invalid ' Defer songLabel
+    m.artistLabel = invalid ' Defer artistLabel
+    m.albumCoverPoster = invalid ' Defer albumCoverPoster
     m.tabGroup = m.top.getScene().FindNode("tabGroup")
     m.tabContainer = m.top.getScene().FindNode("tabContainer")
     m.contentStack = m.top.getScene().FindNode("contentStack")
     m.background = m.top.getScene().FindNode("background")
     m.appLogo = m.top.getScene().FindNode("appLogo")
 
-    if m.stationGrid = invalid or m.playbackUI = invalid or m.toggleButton = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.tabGroup = invalid or m.tabContainer = invalid or m.contentStack = invalid or m.background = invalid or m.appLogo = invalid
+    if m.stationGrid = invalid or m.tabGroup = invalid or m.tabContainer = invalid or m.contentStack = invalid or m.background = invalid or m.appLogo = invalid
         print "ERROR: ListenLiveView - Node not found"
         return
     end if
@@ -30,28 +30,27 @@ Sub Init()
     ]
 
     m.stationGrid.visible = true
-    m.playbackUI.visible = false
     m.stationGrid.numColumns = 4
-    m.stationGrid.itemSize = "[200, 200]"
+    m.stationGrid.itemSize = "[150, 150]"
     m.stationGrid.itemSpacing = "[20, 20]"
-    m.isGridContentLoaded = false
+    m.isPlaybackUILoaded = false
+
+    print "ListenLiveView: Loading stationGrid content"
+    LoadStationGridContent()
+    print "ListenLiveView: stationGrid content loaded"
 
     print "ListenLiveView: Setting observers"
-    m.stationGrid.observeField("itemFocused", "OnStationGridItemFocused")
     m.stationGrid.observeField("itemSelected", "OnStationGridItemSelected")
     m.top.observeField("keyEvent", "onKeyEvent")
-    m.toggleButton.observeField("keyEvent", "OnToggleButtonKeyEvent")
     m.top.observeField("selectedStationIndex", "onStationSelected")
 
+    print "ListenLiveView: Setting initial focus to stationGrid"
+    m.stationGrid.setFocus(true)
+    print "ListenLiveView: stationGrid focus: "; m.stationGrid.hasFocus()
     print "ListenLiveView: Init complete"
 End Sub
 
 Sub LoadStationGridContent()
-    if m.isGridContentLoaded
-        print "ListenLiveView: stationGrid content already loaded"
-        return
-    end if
-
     print "ListenLiveView: Loading stationGrid content"
     content = CreateObject("roSGNode", "ContentNode")
     for each station in m.stations
@@ -62,21 +61,37 @@ Sub LoadStationGridContent()
         child.SDPosterUrl = station.poster
     end for
     m.stationGrid.content = content
-    m.isGridContentLoaded = true
     print "ListenLiveView: stationGrid content loaded"
 End Sub
 
-Sub OnStationGridItemFocused()
-    focusedIndex = m.stationGrid.itemFocused
-    print "ListenLiveView: stationGrid itemFocused: "; focusedIndex; ", grid hasFocus: "; m.stationGrid.hasFocus()
-    if not m.isGridContentLoaded and m.stationGrid.hasFocus()
-        LoadStationGridContent()
+Sub LoadPlaybackUI()
+    if m.isPlaybackUILoaded
+        print "ListenLiveView: playbackUI already loaded"
+        return
     end if
+    print "ListenLiveView: Loading playbackUI"
+    m.playbackUI = m.top.FindNode("playbackUI")
+    m.stationLabel = m.playbackUI.FindNode("stationLabel")
+    m.songLabel = m.playbackUI.FindNode("songLabel")
+    m.artistLabel = m.playbackUI.FindNode("artistLabel")
+    m.albumCoverPoster = m.playbackUI.FindNode("albumCoverPoster")
+    m.toggleButton = m.playbackUI.FindNode("toggleButton")
+    if m.playbackUI = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.toggleButton = invalid
+        print "ERROR: ListenLiveView - Playback UI nodes not found"
+        return
+    end if
+    m.toggleButton.observeField("keyEvent", "OnToggleButtonKeyEvent")
+    m.isPlaybackUILoaded = true
+    print "ListenLiveView: playbackUI loaded"
 End Sub
 
 Sub OnStationGridItemSelected()
     selectedIndex = m.stationGrid.itemSelected
-    print "ListenLiveView: stationGrid itemSelected: "; selectedIndex; ", grid hasFocus: "; m.stationGrid.hasFocus()
+    print "ListenLiveView: stationGrid itemSelected: "; selectedIndex; ", Focused: "; m.stationGrid.itemFocused; ", Grid hasFocus: "; m.stationGrid.hasFocus()
+    if not m.stationGrid.hasFocus()
+        print "ListenLiveView: Forcing stationGrid focus"
+        m.stationGrid.setFocus(true)
+    end if
     m.top.selectedStationIndex = selectedIndex
 End Sub
 
@@ -86,6 +101,15 @@ Sub onStationSelected()
 
     if selectedIndex < 0 or selectedIndex >= m.stations.Count()
         print "ListenLiveView: Invalid station index: "; selectedIndex
+        return
+    end if
+
+    if not m.isPlaybackUILoaded
+        LoadPlaybackUI()
+    end if
+
+    if m.playbackUI = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.toggleButton = invalid
+        print "ERROR: ListenLiveView - Playback UI nodes not loaded"
         return
     end if
 
@@ -142,6 +166,10 @@ Sub onStationSelected()
 End Sub
 
 Sub OnArtistFetched()
+    if m.artistLabel = invalid
+        print "ListenLiveView: artistLabel not loaded, ignoring artist fetch"
+        return
+    end if
     artist = m.metaTask.artist
     print "ListenLiveView: Artist fetched: "; artist
     m.artistLabel.text = artist
@@ -149,6 +177,10 @@ Sub OnArtistFetched()
 End Sub
 
 Sub OnSongTitleFetched()
+    if m.songLabel = invalid
+        print "ListenLiveView: songLabel not loaded, ignoring song title fetch"
+        return
+    end if
     songTitle = m.metaTask.songTitle
     print "ListenLiveView: Song title fetched: "; songTitle
     m.songLabel.text = songTitle
@@ -156,6 +188,10 @@ Sub OnSongTitleFetched()
 End Sub
 
 Function OnToggleButtonKeyEvent() As Boolean
+    if m.toggleButton = invalid
+        print "ListenLiveView: toggleButton not loaded, ignoring key event"
+        return false
+    end if
     key = m.toggleButton.keyEvent.key
     press = m.toggleButton.keyEvent.press
     print "ListenLiveView: Toggle button key event - Key: "; key; ", Press: "; press
@@ -173,7 +209,7 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
         return false
     end if
 
-    if m.playbackUI.visible and m.toggleButton.hasFocus()
+    if m.playbackUI <> invalid and m.playbackUI.visible and m.toggleButton <> invalid and m.toggleButton.hasFocus()
         if key = "back"
             print "ListenLiveView: Back key pressed in playbackUI, returning to tabGroup"
             m.stationGrid.visible = true
@@ -205,16 +241,18 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
             end if
         else if key = "OK"
             focusedIndex = m.stationGrid.itemFocused
-            print "ListenLiveView: OK key pressed in stationGrid, index: "; focusedIndex; ", grid hasFocus: "; m.stationGrid.hasFocus()
-            if m.stationGrid.hasFocus() and m.isGridContentLoaded
+            print "ListenLiveView: OK key pressed in stationGrid, index: "; focusedIndex; ", Grid hasFocus: "; m.stationGrid.hasFocus(); ", Registered: "; true
+            if m.stationGrid.hasFocus()
                 m.stationGrid.itemSelected = focusedIndex
+                OnStationGridItemSelected()
                 return true
             else
-                print "ListenLiveView: stationGrid not focused or content not loaded, ignoring OK key"
+                print "ListenLiveView: stationGrid not focused, ignoring OK key"
                 return false
             end if
         end if
     end if
 
+    print "ListenLiveView: Key event not handled, Key: "; key
     return false
 End Function
