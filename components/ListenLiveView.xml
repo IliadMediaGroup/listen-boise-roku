@@ -2,6 +2,7 @@
 <component name="ListenLiveView" extends="Group">
   <interface>
     <field id="selectedStationIndex" type="integer" onChange="onStationSelected" />
+    <field id="stations" type="array" /> <!-- Added to accept stations -->
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
   <children>
