@@ -13,9 +13,18 @@ Sub Init()
     m.podcastsView = m.top.FindNode("podcastsView")
     m.appLogo = m.top.FindNode("appLogo")
     m.background = m.top.FindNode("background")
+<<<<<<< Updated upstream
 
     if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.newsTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.newsView = invalid or m.podcastsView = invalid or m.appLogo = invalid or m.background = invalid
         print "ERROR: Node not found"
+=======
+    m.podcastsView = invalid
+    m.top.ComponentController = m.top.CreateChild("ComponentController")
+    print "MainScene: ComponentController created"
+
+    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.appLogo = invalid or m.background = invalid or m.top.ComponentController = invalid
+        print "ERROR: MainScene - Required node not found"
+>>>>>>> Stashed changes
         return
     end if
 
@@ -51,6 +60,7 @@ Sub Init()
     m.justEnteredStationGrid = false
 
     print "MainScene: Initial view set to listenLiveView"
+    m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
     m.listenLiveView.visible = true
     m.newsView.visible = false
     m.podcastsView.visible = false
@@ -113,6 +123,7 @@ sub onButtonSelected()
         m.listenLiveTab.setFocus(true)
         m.justEnteredStationGrid = false
         m.background.visible = true
+        m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
     else if selectedIndex = 1
         print "MainScene: Switching to newsView"
         m.listenLiveView.visible = false
@@ -120,6 +131,7 @@ sub onButtonSelected()
         m.podcastsView.visible = false
         m.top.FindNode("newsView").setFocus(true)
         m.background.visible = true
+        m.top.ComponentController.CallFunc("show", { view: m.podcastsView })
     else if selectedIndex = 2
         print "MainScene: Switching to podcastsView"
         m.listenLiveView.visible = false
@@ -149,8 +161,13 @@ sub onButtonSelected()
         m.podcastsView.visible = false
         m.contentStack.visible = true
         m.background.visible = true
+<<<<<<< Updated upstream
         m.listenLiveView.FindNode("toggleButton").setFocus(true)
         m.top.setFocus(true)
+=======
+        toggleButton.setFocus(true)
+        m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
+>>>>>>> Stashed changes
     end if
 
     focusedChildId = "none"
@@ -165,6 +182,18 @@ sub onButtonSelected()
     end if
 end sub
 
+<<<<<<< Updated upstream
+=======
+Sub ShowPlaybackUI()
+    print "MainScene: ShowPlaybackUI called"
+End Sub
+
+Sub OnToggleButtonPressed()
+    print "MainScene: toggleButtonPressed observed from ListenLiveView"
+    OnToggleButton()
+End Sub
+
+>>>>>>> Stashed changes
 Sub OnStationSelected()
     selectedIndex = m.listenLiveView.selectedStationIndex
     print "MainScene: Station selected at index: "; selectedIndex
@@ -285,8 +314,14 @@ Sub OnToggleButton()
         m.podcastsView.visible = false
         m.contentStack.visible = true
         m.background.visible = true
+<<<<<<< Updated upstream
         m.listenLiveView.FindNode("toggleButton").setFocus(true)
         m.top.setFocus(true)
+=======
+        m.tabGroup.setFocus(true)
+        m.listenLiveTab.setFocus(true)
+        m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
+>>>>>>> Stashed changes
         return
     end if
     togglePlayback({})
@@ -433,6 +468,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
             stationGrid.itemFocused = 0 ' Reset to Bull
             m.tabGroup.setFocus(true)
             m.listenLiveTab.setFocus(true)
+            m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
         end if
         m.justEnteredStationGrid = false
         m.tabGroup.visible = true

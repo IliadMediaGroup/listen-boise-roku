@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<component name="FetchMetaTask" extends="Task">
+  <interface>
+    <field id="xmlUrl" type="string" />
+    <field id="artist" type="string" />
+    <field id="songTitle" type="string" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/FetchMetaTask.brs" />
+</component>

@@ -1,4 +1,5 @@
 title=ListenBoise
+<<<<<<< Updated upstream
 subtitle=Your Local Radio Hub
 major_version=1
 minor_version=0
@@ -9,3 +10,15 @@ mm_icon_focus_hd=pkg:/images/icon_focus_hd.png
 mm_icon_focus_sd=pkg:/images/icon_focus_sd.png
 splash_screen_hd=pkg:/images/splash_hd.png
 splash_screen_sd=pkg:/images/splash_sd.png
+=======
+    subtitle=Your Local Radio Hub
+    major_version=1
+    minor_version=0
+    build_version=0
+    mm_icon_focus_fhd=pkg:/images/channel-poster_fhd.png
+    mm_icon_focus_hd=pkg:/images/channel-poster_hd.png
+    mm_icon_focus_sd=pkg:/images/channel-poster_sd.png
+    splash_screen=pkg:/images/splash_screen_hd.png
+    splash_min_time=1000
+    bs_libs_required=roku_ads_lib
+>>>>>>> Stashed changes

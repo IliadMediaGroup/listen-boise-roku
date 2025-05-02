@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "BrightScript Debug: Launch",
+            "type": "brightscript",
+            "request": "launch",
+            "host": "192.168.0.196",
+            "password": "5118",
+            "rootDir": "${workspaceFolder}",
+            "enableDebuggerAutoRecovery": true,
+            "stopOnEntry": false
+        }
+    ]
+}
