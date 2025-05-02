@@ -43,5 +43,30 @@ Sub init()
     m.listenLiveView.visible = true
     m.listenLiveView.SetFocus(true)
     
+    ' Observe stationSelected field
+    m.listenLiveView.observeField("stationSelected", "onStationSelected")
+    
     print "MainScene: Initialized ListenLiveView with 2 rows, 4 columns each"
+End Sub
+
+Sub show(args as Object)
+    print "MainScene: Show called"
+    m.listenLiveView.visible = true
+    m.listenLiveView.SetFocus(true)
+End Sub
+
+Sub onStationSelected()
+    selectedStation = m.listenLiveView.stationSelected
+    if selectedStation <> invalid
+        print "MainScene: Station selected - Title: " + selectedStation.title + ", Stream: " + selectedStation.streamUrl
+        ' Create PlaybackView
+        m.playbackView = m.top.createChild("PlaybackView")
+        m.playbackView.id = "playbackView"
+        m.playbackView.content = selectedStation
+        m.playbackView.visible = true
+        m.playbackView.SetFocus(true)
+        m.listenLiveView.visible = false
+    else
+        print "MainScene: Invalid station selected"
+    end if
 End Sub

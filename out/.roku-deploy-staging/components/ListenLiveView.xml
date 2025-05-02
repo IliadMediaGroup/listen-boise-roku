@@ -9,8 +9,6 @@
   <children>
     <GridView
       id="stationGrid"
-      translation="[210, 150]"
-      itemComponentName="StationItem"
     />
   </children>
 </component>
