@@ -3,17 +3,17 @@ Sub Init()
     m.audioPlayer = m.top.FindNode("audioPlayer")
     m.tabGroup = m.top.FindNode("tabGroup")
     m.listenLiveTab = m.top.FindNode("listenLiveTab")
+    m.newsTab = m.top.FindNode("newsTab")
     m.podcastsTab = m.top.FindNode("podcastsTab")
     m.NowPlayingButton = m.top.FindNode("NowPlayingButton")
     m.contentStack = m.top.FindNode("contentStack")
     m.listenLiveView = m.top.FindNode("listenLiveView")
+    m.newsView = m.top.FindNode("newsView")
+    m.podcastsView = m.top.FindNode("podcastsView")
     m.appLogo = m.top.FindNode("appLogo")
     m.background = m.top.FindNode("background")
-    m.podcastsView = invalid
-    m.top.ComponentController = m.top.CreateChild("ComponentController")
-    print "MainScene: ComponentController created"
 
-    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.appLogo = invalid or m.background = invalid or m.top.ComponentController = invalid
+    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.newsTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.newsView = invalid or m.podcastsView = invalid or m.appLogo = invalid or m.background = invalid
         print "ERROR: MainScene - Required node not found"
         return
     end if
@@ -48,14 +48,12 @@ Sub Init()
     m.isPlaying = false
 
     print "MainScene: Initial view set to listenLiveView"
-    m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
     m.listenLiveView.visible = true
     m.appLogo.visible = true
     m.tabGroup.visible = true
     m.contentStack.visible = true
     m.listenLiveView.FindNode("stationGrid").visible = true
     m.background.visible = true
-    m.background.uri = "pkg:/images/background.png"
 
     print "MainScene: Setting initial focus to tabGroup"
     m.tabGroup.focusable = true
@@ -64,47 +62,49 @@ Sub Init()
     print "MainScene: Init complete"
 End Sub
 
-sub onButtonSelected()
+Sub show(args as Object)
+    print "MainScene: show called with args: "; args
+    if args.view <> invalid
+        m.listenLiveView.visible = (args.view.id = "listenLiveView")
+        m.newsView.visible = (args.view.id = "newsView")
+        m.podcastsView.visible = (args.view.id = "podcastsView")
+        args.view.SetFocus(true)
+    end if
+End Sub
+
+Sub onButtonSelected()
     selectedIndex = m.tabGroup.buttonSelected
     print "MainScene: Button selected at index: "; selectedIndex
 
     if selectedIndex = 0
         print "MainScene: Switching to listenLiveView"
         m.listenLiveView.visible = true
-        if m.podcastsView <> invalid
-            m.podcastsView.visible = false
-        end if
+        m.newsView.visible = false
+        m.podcastsView.visible = false
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         if stationGrid <> invalid
             stationGrid.visible = true
             stationGrid.setFocus(true)
-            print "MainScene: stationGrid focus set, itemFocused: "; stationGrid.itemFocused
+            print "MainScene: stationGrid focus set, rowItemFocused: "; stationGrid.rowItemFocused
         end if
         m.tabGroup.setFocus(true)
         m.listenLiveTab.setFocus(true)
         m.background.visible = true
-        m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
     else if selectedIndex = 1
-        print "MainScene: Switching to podcastsView"
-        if m.podcastsView = invalid
-            print "MainScene: Creating podcastsView dynamically"
-            m.podcastsView = m.top.CreateChild("PodcastsView")
-            m.podcastsView.id = "podcastsView"
-            m.podcastsView.translation = "[270, 250]"
-            m.podcastsView.visible = true
-            if m.podcastsView = invalid
-                print "ERROR: Failed to create podcastsView"
-                m.listenLiveView.visible = true
-                m.tabGroup.setFocus(true)
-                return
-            end if
-        end if
+        print "MainScene: Switching to newsView"
         m.listenLiveView.visible = false
+        m.newsView.visible = true
+        m.podcastsView.visible = false
+        m.newsView.setFocus(true)
+        m.background.visible = true
+    else if selectedIndex = 2
+        print "MainScene: Switching to podcastsView"
+        m.listenLiveView.visible = false
+        m.newsView.visible = false
         m.podcastsView.visible = true
         m.podcastsView.setFocus(true)
         m.background.visible = true
-        m.top.ComponentController.CallFunc("show", { view: m.podcastsView })
-    else if selectedIndex = 2
+    else if selectedIndex = 3
         print "MainScene: Showing NowPlaying UI in listenLiveView"
         playbackUI = m.listenLiveView.FindNode("playbackUI")
         stationGrid = m.listenLiveView.FindNode("stationGrid")
@@ -145,13 +145,9 @@ sub onButtonSelected()
         stationLabel.text = m.stations[m.currentStationIndex].name
         m.appLogo.visible = true
         m.tabGroup.visible = false
-        if m.podcastsView <> invalid
-            m.podcastsView.visible = false
-        end if
         m.contentStack.visible = true
         m.background.visible = true
         toggleButton.setFocus(true)
-        m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
     end if
 
     focusedChildId = "none"
@@ -164,7 +160,7 @@ sub onButtonSelected()
     else
         print "MainScene: stationGrid focus: N/A"
     end if
-end sub
+End Sub
 
 Sub ShowPlaybackUI()
     print "MainScene: ShowPlaybackUI called"
@@ -218,7 +214,7 @@ Sub OnStationSelected()
     content.addHeader("Connection", "keep-alive")
     m.audioPlayer.content = content
     m.audioPlayer.control = "prebuffer"
-    sleep(500) ' Add delay for stream readiness
+    sleep(500)
     m.audioPlayer.control = "play"
     m.isPlaying = true
     m.registry.Write("isPlaying", "true")
@@ -254,7 +250,6 @@ Sub OnToggleButton()
         m.background.visible = true
         m.tabGroup.setFocus(true)
         m.listenLiveTab.setFocus(true)
-        m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
         return
     end if
     togglePlayback({})
@@ -295,7 +290,7 @@ Sub togglePlayback(data as Object)
         content.addHeader("Connection", "keep-alive")
         m.audioPlayer.content = content
         m.audioPlayer.control = "prebuffer"
-        sleep(500) ' Add delay for stream readiness
+        sleep(500)
         m.audioPlayer.control = "play"
         m.isPlaying = true
         m.registry.Write("isPlaying", "true")
@@ -354,11 +349,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
         focusedChildId = m.tabGroup.focusedChild.id
     end if
     print "MainScene: Current focus - scene: "; m.top.hasFocus(); ", tabGroup: "; m.tabGroup.hasFocus(); ", focused button: "; focusedChildId
-    podcastsViewVisibility = "invalid"
-    if m.podcastsView <> invalid
-        podcastsViewVisibility = m.podcastsView.visible
-    end if
-    print "MainScene: Current view visibility - listenLiveView: "; m.listenLiveView.visible; ", podcastsView: "; podcastsViewVisibility
+    print "MainScene: Current view visibility - listenLiveView: "; m.listenLiveView.visible; ", newsView: "; m.newsView.visible; ", podcastsView: "; m.podcastsView.visible
     if m.listenLiveView.visible
         print "MainScene: stationGrid focus: "; m.listenLiveView.FindNode("stationGrid").hasFocus()
     else
@@ -376,15 +367,13 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back"
         print "MainScene: Back key pressed, returning to main menu"
         m.listenLiveView.visible = true
-        if m.podcastsView <> invalid
-            m.podcastsView.visible = false
-        end if
+        m.newsView.visible = false
+        m.podcastsView.visible = false
         stationGrid = m.listenLiveView.FindNode("stationGrid")
         if stationGrid <> invalid
             stationGrid.visible = true
             m.tabGroup.setFocus(true)
             m.listenLiveTab.setFocus(true)
-            m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
         end if
         m.tabGroup.visible = true
         m.appLogo.visible = true
@@ -400,7 +389,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
 
     if isTabGroupFocused
         if key = "up" or key = "down"
-            print "MainScene: Up/Down key pressed on tabGroup, handled by ButtonGroup"
+            print "MainScene: Up/Down key pressed on tabGroup, handled by tabGroup"
             return false
         else if key = "right"
             print "MainScene: Right key pressed on tabGroup, focusing stationGrid"
@@ -410,16 +399,21 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean
                     stationGrid.setFocus(true)
                     if not stationGrid.hasFocus()
                         print "MainScene: Retrying stationGrid focus"
+                        stationGrid.rowItemFocused = [0, 0]
                         stationGrid.setFocus(true)
                     end if
                     print "MainScene: stationGrid focused_rectangle: "; stationGrid.boundingRect()
-                    print "MainScene: stationGrid focused item: "; stationGrid.itemFocused; ", hasFocus: "; stationGrid.hasFocus()
+                    print "MainScene: stationGrid focused item: "; stationGrid.rowItemFocused; ", hasFocus: "; stationGrid.hasFocus()
                     return true
                 else
                     print "ERROR: MainScene - stationGrid not found or not visible"
                     return false
                 end if
-            else if m.podcastsView <> invalid and m.podcastsView.visible
+            else if m.newsView.visible
+                print "MainScene: Moving focus to newsView"
+                m.newsView.setFocus(true)
+                return true
+            else if m.podcastsView.visible
                 print "MainScene: Moving focus to podcastsView"
                 m.podcastsView.setFocus(true)
                 return true

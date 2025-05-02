@@ -11,21 +11,14 @@
         <Group translation="[0, 0]">
             <GridView
                 id="stationGrid"
-                translation="[50, 50]"
-                posterShape="square"
+                translation="[100, 100]"
                 visible="true"
-                focusable="true"
-                numRows="2"
-                numColumns="4"
-                itemSize="[150, 150]"
-                itemSpacing="[20, 20]"
-                focusBitmapUri="pkg:/images/focus_grid.9.png"
-                focusFootprintBitmapUri="pkg:/images/focus_grid_footprint.9.png" />
+                focusable="true" />
         </Group>
         <Group translation="[0, 0]">
             <LayoutGroup
                 id="playbackUI"
-                translation="[490, 200]"
+                translation="[370, 110]"
                 layoutDirection="vert"
                 horizAlignment="center"
                 vertAlignment="center"
@@ -71,7 +64,6 @@
                     iconUri="pkg:/images/play_pause.png"
                     focusable="true"
                     translation="[0, 0]"
-                    focusBitmapUri="pkg:/images/button_focus.9.png"
                     visible="false" />
             </LayoutGroup>
         </Group>

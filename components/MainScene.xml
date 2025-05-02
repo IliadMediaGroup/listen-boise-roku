@@ -13,7 +13,7 @@
         <Poster
             id="appLogo"
             uri="pkg:/images/listen_boise_logo.png"
-            translation="[440, 10]"
+            translation="[50, 50]"
             width="400"
             height="200"
             loadDisplayMode="scaleToFit"
@@ -32,7 +32,7 @@
                     visible="true"
                     minWidth="120"
                     textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFFFFFF" />
+                    focusedTextColor="0xFFFF00FF" />
                 <Button
                     id="newsTab"
                     text="News"
@@ -40,7 +40,7 @@
                     visible="true"
                     minWidth="120"
                     textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFFFFFF" />
+                    focusedTextColor="0xFFFF00FF" />
                 <Button
                     id="podcastsTab"
                     text="Podcasts"
@@ -48,7 +48,7 @@
                     visible="true"
                     minWidth="120"
                     textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFFFFFF" />
+                    focusedTextColor="0xFFFF00FF" />
                 <Button
                     id="NowPlayingButton"
                     text="Now Playing"
@@ -56,16 +56,7 @@
                     visible="true"
                     minWidth="120"
                     textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFFFFFF" />
-                <Poster
-                    id="toggleButton"
-                    uri="pkg:/images/play_pause.png"
-                    width="48"
-                    height="48"
-                    translation="[0, 0]"
-                    loadDisplayMode="scaleToFit"
-                    visible="true"
-                    focusable="true" />
+                    focusedTextColor="0xFFFF00FF" />
             </ButtonGroup>
         </Group>
         <Group
