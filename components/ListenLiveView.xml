@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="ListenLiveView" extends="Group">
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   <interface>
     <field id="selectedStationIndex" type="integer" onChange="onStationSelected" />
   </interface>
@@ -77,6 +78,8 @@
     </Group>
   </children>
 =======
+=======
+>>>>>>> Stashed changes
     <interface>
         <field id="selectedStationIndex" type="integer" />
         <field id="stations" type="array" />
@@ -153,5 +156,8 @@
             </LayoutGroup>
         </Group>
     </children>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 </component>

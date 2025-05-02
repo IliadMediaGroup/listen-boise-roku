@@ -3,12 +3,15 @@ sub init()
     m.stationGrid = m.top.FindNode("stationGrid")
     m.playbackUI = m.top.FindNode("playbackUI")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     m.toggleButton = m.top.FindNode("toggleButton")
     m.stationLabel = m.top.FindNode("stationLabel")
     m.songLabel = m.top.FindNode("songLabel")
     m.artistLabel = m.top.FindNode("artistLabel")
     m.albumCoverPoster = m.top.FindNode("albumCoverPoster")
 =======
+=======
+>>>>>>> Stashed changes
     m.toggleButton = m.playbackUI.FindNode("toggleButton")
     m.stationLabel = m.playbackUI.FindNode("stationLabel")
     m.songLabel = m.playbackUI.FindNode("songLabel")
@@ -57,6 +60,7 @@ sub init()
 
     m.playbackUI.visible = false
     m.stationGrid.visible = true
+<<<<<<< Updated upstream
     m.stationLabel.visible = false
     m.songLabel.visible = false
     m.artistLabel.visible = false
@@ -73,6 +77,8 @@ sub forceGridFocus()
 end sub
 =======
     m.stationGrid.visible = true
+=======
+>>>>>>> Stashed changes
     print "ListenLiveView: Loading stationGrid content"
     LoadStationGridContent()
     print "ListenLiveView: stationGrid content loaded"
@@ -447,6 +453,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 print "ListenLiveView: background visible: "; background.visible
             end if
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             if appLogo <> invalid
                 appLogo.visible = true
                 print "ListenLiveView: appLogo visible: "; appLogo.visible
@@ -457,6 +464,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             end if
             print "ListenLiveView: tabGroup focus: "; tabGroup.hasFocus()
 =======
+=======
+>>>>>>> Stashed changes
             return true
         end if
     else if m.stationGrid.visible and m.stationGrid.hasFocus()

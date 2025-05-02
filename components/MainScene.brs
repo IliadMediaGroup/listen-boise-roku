@@ -14,9 +14,18 @@ Sub Init()
     m.appLogo = m.top.FindNode("appLogo")
     m.background = m.top.FindNode("background")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.newsTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.toggleButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.newsView = invalid or m.podcastsView = invalid or m.appLogo = invalid or m.background = invalid
         print "ERROR: Node not found"
+=======
+    m.podcastsView = invalid
+    m.top.ComponentController = m.top.CreateChild("ComponentController")
+    print "MainScene: ComponentController created"
+
+    if m.audioPlayer = invalid or m.tabGroup = invalid or m.listenLiveTab = invalid or m.podcastsTab = invalid or m.NowPlayingButton = invalid or m.contentStack = invalid or m.listenLiveView = invalid or m.appLogo = invalid or m.background = invalid or m.top.ComponentController = invalid
+        print "ERROR: MainScene - Required node not found"
+>>>>>>> Stashed changes
 =======
     m.podcastsView = invalid
     m.top.ComponentController = m.top.CreateChild("ComponentController")
@@ -167,6 +176,9 @@ sub onButtonSelected()
 =======
         toggleButton.setFocus(true)
         m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     end if
 
@@ -183,7 +195,10 @@ sub onButtonSelected()
 end sub
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 Sub ShowPlaybackUI()
     print "MainScene: ShowPlaybackUI called"
 End Sub
@@ -321,6 +336,9 @@ Sub OnToggleButton()
         m.tabGroup.setFocus(true)
         m.listenLiveTab.setFocus(true)
         m.top.ComponentController.CallFunc("show", { view: m.listenLiveView })
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         return
     end if
