@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2018 Roku, Inc. All rights reserved. -->
 
 <!-- @Public
-    developer should extend BaseScene and work in it's context.
+    Developer should extend BaseScene and work in it's context.
     Function show(args) should be overrided in channel.
 
     @Sample:
@@ -28,26 +28,28 @@
     <interface>
         <!-- @Public -->
         <!-- @ReadOnly -->
-        <!-- reference to ComponentController node that is created and used inside library -->
+        <!-- Reference to ComponentController node that is created and used inside library -->
         <field id="ComponentController" type="node" />
+
+        <!-- @Public -->
+        <!-- Reference to the button bar node (default ButtonBar is created by the SGDEX) -->
+        <field id="buttonBar" type="node" alias="ComponentController.buttonBar" />
 
         <!-- @Public -->
         <!-- @WriteOnly -->
         <!-- Exits channel if set to true -->
         <field id="exitChannel" type="bool" alwaysNotify="true" />
 
-        <!-- Deep linking launch arguments will be passed via this field to Show function -->
+        <!-- Deep linking launch arguments will be passed via this field to Show() function -->
         <field id="launch_args" type="assocarray" onChange="LaunchArgumentsReceived" />
+
+        <!-- roInput deep linking arguments will be passed via this field to Input() function -->
+        <field id="input_args" type="assocarray" onChange="InputArgumentsReceived" />
 
         <!-- @Public -->
         <!-- Theme is used to customize the appearance of all SGDEX views.
-        For common fields see [SGDEXComponent](#SGDEXComponent#fields#theme)
-        For view specific views see view documentation
-
-        [GridView](#GridView#fields#theme)
-        [DetailsView](#DetailsView#fields#theme)
-        [VideoView](#VideoView#fields#theme)
-        [CategoryListView](#CategoryListView#fields#theme)
+        For common fields see [SGDEXComponent](#sgdexcomponent)
+        For view specific theming, see each view's documentation
 
         <b>Theme can be set to several levels</b>
         <b>Any view:</b>
@@ -103,7 +105,7 @@
 
         <!-- @Public -->
         <!-- Field to update themes by passing the config
-            Structure of config is same as for [theme](#BaseScene#fields#theme) field.
+            Structure of config is same as for [theme](#basescene) field.
             You should only pass fields that should be updated not all theme fields.
 
             Note. if you want to change a lot of fields change them with as smaller amount of configs as you can, it wouldn't redraw views too often then.
@@ -122,6 +124,6 @@
 
     <children>
         <ComponentController
-            id ="ComponentController" />
+            id="ComponentController" />
     </children>
 </component>

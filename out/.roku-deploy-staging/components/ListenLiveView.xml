@@ -1,71 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="ListenLiveView" extends="Group">
-    <interface>
-        <field id="selectedStationIndex" type="integer" />
-        <field id="stations" type="array" />
-        <field id="toggleButtonPressed" type="boolean" />
-        <field id="keyEvent" type="assocarray" />
-    </interface>
-    <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
-    <children>
-        <Group translation="[0, 0]">
-            <GridView
-                id="stationGrid"
-                translation="[100, 100]"
-                visible="true"
-                focusable="true" />
-        </Group>
-        <Group translation="[0, 0]">
-            <LayoutGroup
-                id="playbackUI"
-                translation="[370, 110]"
-                layoutDirection="vert"
-                horizAlignment="center"
-                vertAlignment="center"
-                itemSpacings="[10, 10, 10, 10]"
-                visible="false">
-                <Poster
-                    id="albumCoverPoster"
-                    translation="[0, 0]"
-                    width="300"
-                    height="300"
-                    loadDisplayMode="scaleToFit"
-                    loadSync="true"
-                    visible="false" />
-                <Label
-                    id="stationLabel"
-                    translation="[0, 0]"
-                    width="300"
-                    height="40"
-                    font="font:SmallSystemFont"
-                    color="0xFFFFFF"
-                    horizAlign="center"
-                    visible="false" />
-                <Label
-                    id="songLabel"
-                    translation="[0, 0]"
-                    width="300"
-                    height="40"
-                    font="font:SmallSystemFont"
-                    color="0xFFFFFF"
-                    horizAlign="center"
-                    visible="false" />
-                <Label
-                    id="artistLabel"
-                    translation="[0, 0]"
-                    width="300"
-                    height="40"
-                    font="font:SmallSystemFont"
-                    color="0xFFFFFF"
-                    horizAlign="center"
-                    visible="false" />
-                <Button
-                    id="toggleButton"
-                    iconUri="pkg:/images/play_pause.png"
-                    focusable="true"
-                    translation="[0, 0]"
-                    visible="false" />
-            </LayoutGroup>
-        </Group>
-    </children>
+  <interface>
+    <field id="content" type="node" onChange="onContentSet" />
+    <field id="visible" type="boolean" onChange="onVisibleChange" />
+    <field id="stationSelected" type="node" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
+  <children>
+    <GridView
+      id="stationGrid"
+      translation="[210, 150]"
+      itemComponentName="StationItem"
+    />
+  </children>
 </component>

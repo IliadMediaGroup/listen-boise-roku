@@ -1,6 +1,8 @@
 ' Copyright (c) 2018 Roku, Inc. All rights reserved.
 
 sub Init()
+    initCategoryListViewNodes()
+
     ' init content manager utils field
     m.itemToSection = []
     m.firstItemInSection = [0]
@@ -14,17 +16,14 @@ sub Init()
     ' is used by utils to populate id of loading data
     m.SectionKeyField = "CM_row_ID_Index"
 
-    ' setup nodes
-    m.categoryList = m.top.FindNode("categoryList")
-    m.itemsList = m.top.FindNode("itemsList")
-    m.itemsList.focusBitmapUri = "pkg:/components/SGDEX/Images/focus.9.png"
-
     m.spinner = m.top.FindNode("spinner")
     m.spinner.uri = "pkg:/components/SGDEX/Images/loader.png"
     ' show loading indicator
     ShowBusySpinner(true)
 
     m.categoryListGainFocus = false
+    ' used to identify which list was last, category or items
+    m.wasCategoryListFocused = false
     m.debug = false
 
     m.itemsList.AddField("itemTitleColor", "color", true)
@@ -39,8 +38,11 @@ sub Init()
     m.top.ObserveField("animateToCategory", "OnanimateToSection")
     m.top.ObserveField("jumpToItemInCategory", "OnjumpToItemInSection")
     m.top.ObserveField("animateToItemInCategory", "OnanimateToItemInSection")
+    m.top.ObserveField("focusedChild", "OnFocusedChildChanged")
+    m.top.ObserveField("style", "OnStyleChanged")
 
     m.categoryList.ObserveField("itemFocused", "OnCategoryListItemFocused")
+    m.categoryList.ObserveField("itemSelected", "OnCategoryListItemSelected")
 
     m.categoryList.ObserveField("translation", "OnCategoryListTranslationChange")
     m.itemsList.ObserveField("translation", "OnCategoryListTranslationChange")
@@ -60,8 +62,27 @@ sub Init()
     end if
 end sub
 
+sub initCategoryListViewNodes()
+    m.categoryList = m.top.viewContentGroup.CreateChild("LabelList")
+    m.categoryList.id = "categoryList"
+    m.categoryList.translation = [114, 6]
+    m.categoryList.itemSpacing = [0, 10]
+    m.categoryList.itemSize = [360, 48]
+
+    m.itemsList = m.top.viewContentGroup.CreateChild("MarkupListWithRewFF")
+    m.itemsList.id = "itemsList"
+    m.itemsList.translation = [537, 20]
+    m.itemsList.itemComponentName = "StandardCategoryListItemComponent"
+    m.itemsList.drawFocusFeedbackIfViewUnfocused = false
+    m.itemsList.drawFocusFeedbackOnTop = true
+    m.itemsList.itemSize = [650, 180]
+    m.itemsList.itemSpacing = [0, 20]
+    m.itemsList.numRows = 4
+    m.itemsList.focusBitmapUri = "pkg:/components/SGDEX/Images/focus.9.png"
+end sub
+
 sub OnWasShown()
-    if m.itemsList.content <> invalid then m.itemsList.SetFocus(true)
+    if m.itemsList.content <> invalid and m.top.IsInFocusChain() then m.itemsList.SetFocus(true)
 end sub
 
 sub OnContentChange()
@@ -93,6 +114,26 @@ sub OnContentChange()
                 OnRootContentLoaded()
             end if
         end if
+    else
+        m.categoryList.content = invalid
+        m.itemsList.content = invalid
+    end if
+end sub
+
+sub OnStyleChanged()
+    style = m.top.style
+    if style = "rmp"
+        m.categoryList.Update({
+            itemSize: [280, 48]
+        })
+        m.itemsList.Update({
+            translation: [457, 5]
+            itemComponentName: "NarrowCategoryListItemComponent"
+            itemSize: [730, 51]
+            itemSpacing: [0]
+            numRows: 10
+            focusBitmapUri: "null"
+        })
     end if
 end sub
 
@@ -244,6 +285,25 @@ sub InitSectionMaps(content as Object)
     m.firstItemInSection.Pop() ' remove last redundant item
 end sub
 
+sub OnFocusedChildChanged()
+    ' check if CategoryListVIew is in focus and if at least one of its components is in focus
+    isOuterFocusChange = m.top.IsInFocusChain() and not m.categoryList.HasFocus() and not m.itemsList.HasFocus()
+    if isOuterFocusChange
+        if m.wasCategoryListFocused = true
+            ' setup this flag to avoid jumping to first element in itemsList
+            ' See OnCategoryListItemFocused function
+            m.categoryListGainFocus = true
+            ' Unobserve itemFocused field to avoid additional triggering of
+            ' the OnCategoryListItemFocused function
+            m.categoryList.unObserveField("itemFocused")
+            m.categoryList.SetFocus(true)
+            m.categoryList.ObserveField("itemFocused", "OnCategoryListItemFocused")
+        else
+            m.itemsList.SetFocus(true)
+        end if
+    end if
+end sub
+
 sub OnCategoryListItemFocused(event as Object)
     m.IdleUpdateTimer.control = "stop"
     if m.categoryListGainFocus
@@ -262,6 +322,12 @@ sub OnCategoryListItemFocused(event as Object)
         fireItemFocusedEvent(m.firstItemInSection[focusedCategory])
     end if
     m.IdleUpdateTimer.control = "start"
+end sub
+
+sub OnCategoryListItemSelected(event as Object)
+    if m.itemsList <> invalid and m.itemsList.content <> invalid
+        m.itemsList.SetFocus(true)
+    end if
 end sub
 
 sub OnItemsListItemFocused(event as Object)
@@ -359,7 +425,7 @@ end sub
 sub OnItemsListContentSet(event as Object)
     if m.itemsList.content = invalid or not m.itemsList.content.IsSameNode(m.top.content) or ( not m.categoryList.HasFocus() and not m.itemsList.HasFocus()) then
         itemsContent = event.GetData()
-        if itemsContent <> invalid then m.itemsList.SetFocus(true)
+        if itemsContent <> invalid and m.top.IsInFocusChain() then m.itemsList.SetFocus(true)
     end if
 end sub
 
@@ -377,17 +443,43 @@ sub OnItemsListItemFFRewPressed(event as Object)
         "isRewPressed": - 1
     }
     addIndex = addToCategoryListIndex[field]
-    if addIndex <> invalid
-        currentSection = m.itemToSection[m.itemsList.itemFocused]
-        ' if we are moving back from not first item in section, we have to move to start of section first
-        if m.firstItemInSection[currentSection] <> m.itemsList.itemFocused and addIndex < 0 then
-            addIndex = 0
+    if m.top.ffrwPageSize = 0
+        if addIndex <> invalid
+            currentSection = m.itemToSection[m.itemsList.itemFocused]
+            ' if we are moving back from not first item in section, we have to move to start of section first
+            if m.firstItemInSection[currentSection] <> m.itemsList.itemFocused and addIndex < 0 then
+                addIndex = 0
+            end if
+            categoryIndex = currentSection + addIndex
+            if categoryIndex > m.categoryList.content.GetChildCount() - 1 then categoryIndex = 0
+            if categoryIndex < 0 then categoryIndex = m.categoryList.content.GetChildCount() - 1
+            m.categoryList.jumpToItem = categoryIndex
+            m.itemsList.jumpToItem = m.firstItemInSection[categoryIndex]
         end if
-        categoryIndex = currentSection + addIndex
-        if categoryIndex > m.categoryList.content.GetChildCount() - 1 then categoryIndex = 0
-        if categoryIndex < 0 then categoryIndex = m.categoryList.content.GetChildCount() - 1
-        m.categoryList.jumpToItem = categoryIndex
-        m.itemsList.jumpToItem = m.firstItemInSection[categoryIndex]
+    else if m.top.ffrwPageSize > 0
+        currentItemIndex = m.itemsList.itemFocused
+        allItems = m.itemToSection.Count()
+        indexToJump = currentItemIndex + m.top.ffrwPageSize * addIndex
+        ' avoid index to be out of range
+        if indexToJump < 0
+            if currentItemIndex = 0
+                ' we are on the first item, so stick to last one
+                indexToJump = allItems - 1
+            else
+                ' not the first item, so stick to first one
+                indexToJump = 0
+            end if
+        else if indexToJump >= allItems
+            if currentItemIndex = allItems - 1
+                ' we are on the last item, so stick to first one
+                indexToJump = 0
+            else
+                ' not the last item, so stick to last one
+                indexToJump = allItems - 1
+            end if
+        end if
+        m.itemsList.jumpToItem = indexToJump
+        m.categoryList.jumpToItem = m.itemToSection[indexToJump]
     end if
 end sub
 
@@ -396,11 +488,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
     if press
         if key = "left" and m.itemsList.HasFocus()
+            m.wasCategoryListFocused = true
             m.categoryListGainFocus = true
             m.categoryList.SetFocus(true)
             handled = true
         else if key = "right" and m.categoryList.HasFocus()
             m.itemsList.SetFocus(true)
+            m.wasCategoryListFocused = false
             handled = true
         end if
     end if
@@ -502,6 +596,8 @@ sub SGDEX_SetTheme(theme as Object)
 
         categoryfocusRingColor:  { categoryList: "focusBitmapBlendColor" }
         itemsListfocusRingColor: { itemsList:    "focusBitmapBlendColor" }
+
+        busySpinnerColor: { spinner : { poster: "blendColor"} }
     }
     SGDEX_setThemeFieldstoNode(m, themeAttributes, theme)
 end sub
@@ -509,3 +605,59 @@ end sub
 function SGDEX_GetViewType() as String
     return "categoryListView"
 end function
+
+sub SGDEX_UpdateViewUI()
+    buttonBar = m.top.getScene().buttonBar
+    if buttonBar = invalid or m.categoryList = invalid or m.itemsList = invalid then return
+
+    ' default item widths for category and items lists(left and right sides 
+    ' of the view, respectively)
+    labelCategoryListWidth = 360
+    if m.top.style = "rmp" then labelCategoryListWidth = 280
+    newLabelCategoryListWidth = labelCategoryListWidth
+    minLabelCategoryListWidth = labelCategoryListWidth / 2
+    labelItemsListWidth = 650
+    if m.top.style = "rmp" then labelItemsListWidth = 730
+    minLabelItemsListWidth = labelItemsListWidth * 0.75
+
+    ' start position settings of the items list
+    itemsListTranslation = [537, 20]
+    if m.top.style = "rmp" then itemsListTranslation = [457, 5]
+
+    ' visual horizontal spacing between ButtonBar and CategoryListView 
+    bb2ViewHorizSpacing = 110
+
+    ' button bar show status
+    isButtonBarInFocusChain = buttonBar.isInFocusChain()
+    isButtonBarVisible = buttonBar.visible
+    isAutoHide = buttonBar.autoHide
+    isButtonBarOverlay = buttonBar.overlay
+
+    if buttonBar.alignment = "left" and not isButtonBarOverlay
+        ' delta BB width is BB width minus free space between BB and CL
+        deltaBBWidth = (GetButtonBarWidth() - bb2ViewHorizSpacing) / 2
+        if not isButtonBarInFocusChain and isAutoHide
+            m.top.viewContentGroup.translation = [0, m.top.viewContentGroup.translation[1]]
+        else if isButtonBarVisible and (not isAutoHide or isButtonBarInFocusChain)
+            ' Resize buttons and items of item list if layout shifted
+            newLabelCategoryListWidth -= deltaBBWidth
+            if newLabelCategoryListWidth < minLabelCategoryListWidth 
+                newLabelCategoryListWidth = minLabelCategoryListWidth
+            end if
+
+            labelItemsListWidth -= deltaBBWidth
+            if labelItemsListWidth < minLabelItemsListWidth
+                labelItemsListWidth = minLabelItemsListWidth
+            end if
+        end if
+    end if
+
+    ' set up new values for item and category lists itemSize
+    m.itemsList.translation = [itemsListTranslation[0] - labelCategoryListWidth + newLabelCategoryListWidth, itemsListTranslation[1]]
+    m.itemsList.itemSize = [labelItemsListWidth, m.itemsList.itemSize[1]]
+    m.categoryList.itemSize = [newLabelCategoryListWidth, 48]
+    if isButtonBarVisible and not isButtonBarOverlay and (not isAutoHide or isButtonBarInFocusChain) and buttonBar.alignment = "left"
+        '  minimize horizontal spacing between left-aligned ButtonBar and the view contents
+        m.top.viewContentGroup.translation = [m.top.viewContentGroup.translation[0] - bb2ViewHorizSpacing, m.top.viewContentGroup.translation[1]]
+    end if
+end sub

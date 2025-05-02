@@ -14,9 +14,20 @@ sub StartSGDEXChannel(componentName, args)
     m.port = CreateObject("roMessagePort")
     screen.SetMessagePort(m.port)
     scene = screen.CreateScene(componentName)
+
+    ' Execute MainInit function, if defined by developer, prior to showing the RSG scene
+    if Type(MainInit) = "Function" OR Type(MainInit) = "roFunction"
+        MainInit(screen, args)
+    end if
+
     screen.Show()
     scene.ObserveField("exitChannel", m.port)
     scene.launch_args = args
+
+    ' create roInput context for handling roInputEvent messages
+    input = CreateObject("roInput")
+    input.setMessagePort(m.port)
+    
     while (true)
         msg = Wait(0, m.port)
         msgType = Type(msg)
@@ -28,6 +39,15 @@ sub StartSGDEXChannel(componentName, args)
             if field = "exitChannel" and data = true
                 END
             end if
+        else if msgType = "roInputEvent"
+            ' roInputEvent deep linking, pass arguments to the scene
+            scene.input_args = msg.getInfo()
         end if
+
+        ' Pass event msg to MainHandleEvent, if defined by developer
+        if Type(MainHandleEvent) = "Function" OR Type(MainHandleEvent) = "roFunction"
+            MainHandleEvent(msg)
+        end if
+
     end while
 end sub

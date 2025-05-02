@@ -6,7 +6,7 @@ sub InitContentGetterValues()
     m.debug = false
     'change poster url for items that are added to queue
     m.debug_loadingItems = false
-    ' Tells how many extra rows should be loaded, so we have more that visible rows loaded 
+    ' Tells how many extra rows should be loaded, so we have more that visible rows loaded
     ' to prefetch data when developer will need it
     m.EXTRA_ROWS = 2
     m.VISIBLE_ITEMS = 5
@@ -14,7 +14,7 @@ sub InitContentGetterValues()
     resetIdleValues()
     'maximum radius for loading content
     m.MAX_RADIUS = 30
-    ' internal fields    
+    ' internal fields
     m.ContentManager_id = - 1
     'callbacks map for each task that is executed
     m.ContentManager_callbacks = {}
@@ -25,7 +25,7 @@ sub InitContentGetterValues()
     'map for holding number of fails per row and page,  {"0" (row_index):{"1"(page_index):0 (count)}}
     m.ContentManager_Page_Fails = {}
 
-    ' Fields for queue 
+    ' Fields for queue
     m.waitingQueue = []
     'tasks that are running now
     m.runningQueue = []
@@ -47,6 +47,7 @@ sub InitContentGetterValues()
     m.hdposterUrl = "https://dummyimage.com/25x25/ff0000/2b3299/locked.png&text=locked"
 
     m.CM_row_ID_Index = 0
+    m.uniqueRowIndex = 0
 end sub
 
 'This function creates task and starts it
@@ -70,11 +71,13 @@ function CreateTask(callback as Object, HandlerConfig as Object, content as Obje
         task = GetNodeFromChannel(HandlerConfig.name)
         if task <> invalid then
             if HandlerConfig.fields <> invalid then task.SetFields(HandlerConfig.fields)
+            if HandlerConfig.query <> invalid then task.SetFields({query: HandlerConfig.query})
             if additionalFields <> invalid then task.SetFields(additionalFields)
             RegisterTaskCallback(callback, task)
             if m.debug then ? "GetContentData: " HandlerConfig.name' ":" task.functionName
             if not task.hasField("content") then task.AddField("content", "node", true)
             task.content = content
+            ' To avoid warning prints in console for HandlerRAF
             task.HandlerConfig = HandlerConfig
         end if
     end if
@@ -233,6 +236,7 @@ sub QueueGetContentData(callback as Object, HandlerConfig as Object, content = i
         m.ContentManager_TaskIds[key] = ""
     end if
     if isShouldAdd then
+        taskObject.callback.executionTimer = CreateObject("roTimespan")
         if isHighPriority then
             m.waitingQueue.Push(taskObject)
         else
@@ -263,7 +267,7 @@ end sub
 
 'This function gets last tasks that was added to queue and runs it
 'It can start up to m.top.MAX_SIMULTANEOUS_LOADINGS tasks at a time
-' if implemented doPrioritySort() function is responsible for sorting tasks 
+' if implemented doPrioritySort() function is responsible for sorting tasks
 '@See doPrioritySort
 sub RunNextTaskFromQueue()
     if not m.waitingQueue.IsEmpty() and m.CanLoadContent then
@@ -280,6 +284,42 @@ sub RunNextTaskFromQueue()
 
                 newTaskToRun = ExecuteGetContentData(callback, HandlerConfig, content, additionalFields)
                 newTaskToRun.id = TaskToRun.id
+
+                if m.debug then
+                    ?"SGDEX CH task: loading "taskToRun.id[0] "x"taskToRun.id[1]
+                    taskToRun.callback.priorityID = taskToRun.id
+
+                    taskToRun.callback.RunNextTaskFromQueue_orig_onstart = taskToRun.callback.OnStart
+                    taskToRun.callback.RunNextTaskFromQueue_orig_onReceive = taskToRun.callback.OnReceive
+                    taskToRun.callback.RunNextTaskFromQueue_orig_onError = taskToRun.callback.OnError
+                    taskToRun.callback.RunNextTaskFromQueue_orig_onComplete = taskToRun.callback.onComplete
+
+                    taskToRun.callback.OnStart = sub()
+                        m.taksStartedTime = m.executionTimer.TotalMilliseconds()
+                        m.executionTimer.mark()
+
+                        if m.RunNextTaskFromQueue_orig_onstart <> invalid then m.RunNextTaskFromQueue_orig_onstart()
+                    end sub
+
+                    taskToRun.callback.OnReceive = sub(data)
+                        m.taksExecutedIn = m.executionTimer.TotalMilliseconds()
+                        if m.RunNextTaskFromQueue_orig_OnReceive <> invalid then m.RunNextTaskFromQueue_orig_OnReceive(data)
+                    end sub
+
+                    taskToRun.callback.OnError = sub(data)
+                        m.taksExecutedIn = m.executionTimer.TotalMilliseconds()
+                        if m.RunNextTaskFromQueue_orig_onError <> invalid then m.RunNextTaskFromQueue_orig_onError(data)
+                    end sub
+
+                    taskToRun.callback.onComplete = sub()
+                        if m.taksExecutedIn then
+                            m.taksExecutedIn = m.executionTimer.TotalMilliseconds()
+                        end if
+                        ?"SGDEX CH task: finished "m.priorityID[0]  "x"m.priorityID[1] " started after "m.taksStartedTime " task execution time "m.taksExecutedIn
+                        if m.RunNextTaskFromQueue_orig_onComplete <> invalid then m.RunNextTaskFromQueue_orig_onComplete()
+                    end sub
+                end if
+
                 if taskToRun.callback.OnStart <> invalid then taskToRun.callback.OnStart()
                 m.runningQueue.Push(newTaskToRun)
             end if
@@ -308,7 +348,7 @@ end function
 
 ' checks is this row has placeholdre items
 ' if yes, it check if all items are marked
-'marking is done once so we don' t do it very often when user navigates 
+'marking is done once so we don' t do it very often when user navigates
 function CheckIfLazyRow(row as Object) as Boolean
     result = row <> invalid and row[m.Handler_ConfigField] <> invalid and row[m.Handler_ConfigField].pageSize <> invalid and row[m.Handler_ConfigField].pageSize > 0
     if result and (row.CM_Lazy_IsMarked = invalid or not row.CM_Lazy_IsMarked) and row.GetchildCount() > 0 then
@@ -402,7 +442,45 @@ sub OnIdleStateChanged(event as Object)
     end if
 end sub
 
-function IsToManyPageFails(row as Object, page as Object) as Boolean
+sub addPageToQueue(row, page as Integer)
+
+    ' add this row and page to loading map
+    map = m.ContentManager_Page_IDs
+    rowindex = getPageKey(row)
+    pageIndex = page.Tostr()
+
+    if map[rowindex] = invalid then
+        map[rowindex] = {}
+    end if
+    ' add this item to row map
+    if map[rowindex][pageIndex] = invalid
+        map[rowindex][pageIndex] = ""
+    end if
+end sub
+
+sub RemovePageFromQueue(row, page as Integer)
+    gThis = GetGlobalAA()
+    map = gThis.ContentManager_Page_IDs
+
+    rowKey = getPageKey(row)
+    if map[rowKey] <> invalid then
+        rowFails = map[rowKey]
+        rowFails.Delete(page.Tostr())
+        rowFails.Delete(page.Tostr().trim())
+        if map[rowKey].count() = 0 then
+            map.Delete(rowKey)
+        end if
+    end if
+end sub
+
+' This will tell if page is already in queue
+'So we don' t start new loading
+function isPageAlreadyInQueue(rowIndex as Object, itemIndex as Integer) as Boolean
+    rowIndex = getPageKey(rowIndex).trim()
+    return m.ContentManager_Page_IDs[rowIndex] <> invalid and m.ContentManager_Page_IDs[rowIndex][itemIndex.Tostr().trim()] <> invalid
+end function
+
+function IsToManyPageFails(row as Object, page as Integer) as Boolean
     max_fails = 5
     if GetGlobalAA().top.MAX_NUMBER_OF_FAILS <> invalid then
         max_fails = GetGlobalAA().top.MAX_NUMBER_OF_FAILS
@@ -411,7 +489,7 @@ function IsToManyPageFails(row as Object, page as Object) as Boolean
     return GetPageFails(row, page) > max_fails
 end function
 
-function GetPageFails(row as Object, page as Object) as Integer
+function GetPageFails(row as Object, page as Integer) as Integer
     gThis = GetGlobalAA()
     map = gThis.ContentManager_Page_Fails
     rowKey = getPageKey(row)
@@ -426,8 +504,8 @@ function GetPageFails(row as Object, page as Object) as Integer
     return 0
 end function
 
-' increment current page fails counter 
-sub AddPageFail(row as Object, page as Object)
+' increment current page fails counter
+sub AddPageFail(row as Object, page as Integer)
     gThis = GetGlobalAA()
     rowKey = getPageKey(row)
     map = gThis.ContentManager_Page_Fails
@@ -444,7 +522,7 @@ end sub
 
 ' clear any page fails
 ' This should be called in OnReceive even if page failed previously
-sub ClearPageFails(row as Object, page as Object)
+sub ClearPageFails(row as Object, page as Integer)
     gThis = GetGlobalAA()
     map = gThis.ContentManager_Page_Fails
 
@@ -470,3 +548,50 @@ function getPageKey(value as Object) as String
 
     return result
 end function
+
+function getFocusedItem(row, defaultIndex = 0 as Integer) as Integer
+    if row.CM_focusedItem <> invalid then
+        if row.getChildCount() > 0 and row.CM_row_ID_Index = 2 then return 13
+        return row.CM_focusedItem
+    else
+        setFocusedItem(row, defaultIndex)
+        return defaultIndex
+    end if
+end function
+
+sub setFocusedItem(row, newIndex)
+    if not row.Hasfield("CM_focusedItem") then row.AddField("CM_focusedItem", "int", false)
+    row.CM_focusedItem = newIndex
+end sub
+
+sub MarkRows()
+    if m.uniqueRowIndex = invalid then m.uniqueRowIndex = 0
+
+    ' Try to use m.top.content or m.topView.content as alternative source of content if it wasn't set yet
+    ' This will fix priority sorting as unmarked rows are treated as -1
+    content = m.view.content
+    if content = invalid then content = m.top.content
+    if content = invalid and m.topview <> invalid then content = m.topview.content
+
+    if content <> invalid then
+        children = content.Getchildren( - 1, 0)
+        ' TODO if rows were added/deleted/inserted we have to change map references too
+        'TODO add another references field to hold in map so we don' t use row index
+
+        for each row in children
+            if not row.HasField("CM_row_ID_Index") then
+                row.AddFields({ CM_row_ID_Index: m.uniqueRowIndex })
+                m.uniqueRowIndex++
+            end if
+        end for
+    end if
+end sub
+
+function IsInsertionMode(rowConfig as Object) as Boolean
+    ' pageSize should be specified for the insertion mode
+    return (rowConfig <> invalid  and rowConfig.pageSize <> invalid)
+end function
+
+sub printAPI(event as Object)
+    ?event.getField()"="event.getData()
+end sub

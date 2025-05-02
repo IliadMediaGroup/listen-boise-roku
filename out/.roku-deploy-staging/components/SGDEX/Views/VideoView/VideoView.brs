@@ -100,7 +100,6 @@ end sub
 ' and removes from parent - from VideoView; then creates new Video Node,
 ' configure it, set themes and create new observes
 sub CreateVideoNode() as Object
-    ? "[SGDEX] CreateVideoNode()"
     ClearVideoNode()
     m.isBookmarkHandlerCreated = false
 
@@ -156,10 +155,6 @@ sub OnVideoViewWasShown(event as Object)
     if m.video <> Invalid and not m.video.HasFocus()
         m.video.SetFocus(true)
     end if
-
-    ' this if needed for starting playback
-    ' if user set control play before view was shown
-    if not m.top.preloadContent then OnCurrentIndex()
 end sub
 
 sub OnContentSet(event as Object)
@@ -168,6 +163,14 @@ sub OnContentSet(event as Object)
         ' try to preload content only if content is valid
         OnPreloadContent()
     end if
+
+    if m.top.content = invalid and m.video <> invalid then
+        m.video.content = invalid
+        m.top.currentItem = invalid
+        m.top.state = ""
+    end if
+
+    m.ableToPlay = false
 end sub
 
 ' When control of Video View is set, this sub triggers
@@ -189,60 +192,83 @@ sub OnControlSet(event as Object)
         if m.ableToPlay and (m.rafHandlerConfig = Invalid or m.rafTask = invalid)
             GetRafConfigAndPlayVideo(control)
         else
-            if m.top.currentIndex = - 1 then m.top.currentIndex = 0
+            if m.top.currentIndex = - 1 then
+                m.top.currentIndex = 0
+            else
+                ' Handle case when new content set to VideoView
+                ' and set control to "play"
+                OnCurrentIndex()
+            end if
         end if
     else
         m.video.control = control
     end if
 end sub
 
-' Handled states of video node
-' Check if we should close it
-' check if video is finished - should we show Endcards or not
+' Handle states of video node
 '
 ' @param event [roSGNodeEvent] - m.video.state field event
 sub OnVideoStateChanged(event as Object)
     state = event.GetData()
     m.top.state = state
-    handled = false
     if m.video <> Invalid then
-        statesToClose = {
-            finished: ""
-            error: ""
-        }
-
-        if state = "finished"
-            ' If there is content for endcard, show it and start timer to next video
-            if m.endcardContent <> Invalid or m.top.alwaysShowEndcards
-                ' Hide Video node and show endcard view
-                m.video.visible = false
-                m.video.content = invalid
-
-                CreateVideoNode()
-                ShowEndcardView()
-
-                ' Handled == true to not close VideoView
-                handled = true
-                ' If endcard content not available, but there is a playlist item, play it
-            else if m.top.content.GetChildCount() > m.top.currentIndex + 1
-                CreateVideoNode()
-
-                m.top.currentIndex = m.top.currentIndex + 1
-                ' m.top.control = "play" ' currentIndex callback should start playback automatically
-                handled = true
+        if state = "finished" or state = "error"
+            ' video is played to the end or error occured
+            m.currState = state
+            if not (m.RafTask <> Invalid and m.RafTask.state <> "DONE")
+                ProcessEndState()
+            else
+                ' if there is RAF running
+                ' process end state after RAF was finished and postroll was played
+                m.RAFTask.ObserveField("state", "ProcessEndState")
             end if
         end if
+    end if
+end sub
 
-        if not handled and statesToClose[state] <> Invalid then
-            errorCode = m.video.errorCode or (m.video.errorMsg <> invalid and m.video.errorMsg <> "")
-            if errorCode <> 0
-                ? "[SGDEX] video.errorCode == ";m.video.errorCode; " video.errorMsg == "; m.video.errorMsg
-            end if
+' Process the video node end states
+' Handle starting of the next track or closing the view
+' Check should we show Endcards or not
+sub ProcessEndState()
+    handled = false
+    state = m.currState
+    statesToClose = {
+        finished: ""
+        error: ""
+    }
 
-            ' This field is observed by library, so it will close this View and show previous
-            ' if you set this field to non top View it will just remove it from stack
-            m.top.close = true
+    if state = "finished"
+        ' If there is content for endcard, show it and start timer to next video
+        if (m.endcardContent <> Invalid and m.endcardContent.GetChildCount() > 0) or m.top.alwaysShowEndcards
+            ' Hide Video node and show endcard view
+            m.video.visible = false
+            m.video.content = invalid
+            m.ableToPlay = false
+
+            CreateVideoNode()
+            ShowEndcardView()
+
+            ' Handled == true to not close VideoView
+            handled = true
+            ' If endcard content not available, but there is a playlist item, play it
+        else if m.top.content.GetChildCount() > m.top.currentIndex + 1
+            CreateVideoNode()
+
+            m.top.currentIndex = m.top.currentIndex + 1
+            ' m.top.control = "play" ' currentIndex callback should start playback automatically
+            handled = true
         end if
+    end if
+
+    if not handled and statesToClose[state] <> Invalid then
+        errorCode = m.video.errorCode or (m.video.errorMsg <> invalid and m.video.errorMsg <> "")
+        if errorCode <> 0
+            ? "[SGDEX] video.errorCode == ";m.video.errorCode; " video.errorMsg == "; m.video.errorMsg
+        end if
+
+        ' This field is observed by library, so it will close this View and show previous
+        ' if you set this field to non top View it will just remove it from stack
+        m.top.close = true
     end if
 end sub
 
@@ -318,11 +344,23 @@ sub ShowEndcardView()
     m.endcardView.ObserveField("timerFired", "OnEndcardTimerFired")
 
     hasNextItemInPlaylist = (m.top.content.GetChildCount() > m.top.currentIndex + 1)
-    if hasNextItemInPlaylist and m.top.preloadContent
-        ' Start loading of next item in playlist
-        nextItem = m.top.content.getChild(m.top.currentIndex + 1)
-        nextHandlerConfigVideo = nextItem.HandlerConfigVideo
-        LoadContentHidden(nextItem, nextHandlerConfigVideo)
+    if m.top.preloadContent
+        if hasNextItemInPlaylist
+            ' Start loading of next item in playlist
+            nextItem = m.top.content.getChild(m.top.currentIndex + 1)
+            nextHandlerConfigVideo = nextItem.HandlerConfigVideo
+            LoadContentHidden(nextItem, nextHandlerConfigVideo)
+        else
+            ' RDE-2288: Start prebuffering of current item if there is no next
+            ' That would improve the buffer time if the user selects "Play Again"
+            if m.top.isContentList
+                currItem = m.top.content.getChild(m.top.currentIndex)
+            else
+                currItem = m.top.content
+            end if
+            currHandlerConfigVideo = currItem.HandlerConfigVideo
+            LoadContentHidden(currItem, currHandlerConfigVideo)
+        end if
     end if
 end sub
 
@@ -417,11 +455,10 @@ sub OnCurrentIndex()
         if HandlerConfigVideo = Invalid and m.hiddenLoadTask = invalid and IsContentLoaded()
             m.top.currentItem = currentItem
             OnCurrentItem()
-        else if (m.top.wasShown or m.top.preloadContent)
-            m.loadingfacade = m.top.createChild("LoadingFacade")
-            m.loadingfacade.bEatKeyEvents = false
-            ' TODO Possibly refactor this if
+        else
             if HandlerConfigVideo <> invalid and m.hiddenLoadTask = invalid
+                m.loadingfacade = m.top.createChild("LoadingFacade")
+                m.loadingfacade.bEatKeyEvents = false
                 currentItem.HandlerConfigVideo = invalid
                 LoadMoreContent(currentItem, HandlerConfigVideo)
             else if HandlerConfigVideo = invalid and m.hiddenLoadTask <> invalid
@@ -502,7 +539,7 @@ sub GetRafConfigAndPlayVideo(control)
     ' If Raf config set, need to create RAF task
 
     ExtractRafConfig()
-    if m.rafHandlerConfig <> invalid and m.rafHandlerConfig.name <> ""
+    if m.rafHandlerConfig <> invalid and m.rafHandlerConfig.name <> "" and m.top.control <> "prebuffer"
         rafTask = StartRafTask(m.rafHandlerConfig, m.video)
         if rafTask = invalid
             m.video.enableUI = true
@@ -532,18 +569,21 @@ end sub
 sub CreateBookmarksHandler()
     currentItem = m.top.currentItem
     if currentItem <> invalid then
-        BookmarksHandler = currentItem.BookmarksHandler
-        if BookmarksHandler <> invalid AND BookmarksHandler.name <> invalid then
-            node = GetNodeFromChannel(BookmarksHandler.name)
+        handlerConfigBookmarks = currentItem.handlerConfigBookmarks
+        ' bookmark config field had name BookmarksHandler till v2.0
+        ' to be backward compatible check old field if new wasn`t set
+        if handlerConfigBookmarks = invalid then handlerConfigBookmarks = currentItem.BookmarksHandler
+        if handlerConfigBookmarks <> invalid AND handlerConfigBookmarks.name <> invalid then
+            node = GetNodeFromChannel(handlerConfigBookmarks.name)
             if node <> invalid then
                 m.isBookmarkHandlerCreated = true
-                if BookmarksHandler.fields <> invalid then node.setFields(BookmarksHandler.fields)
+                if handlerConfigBookmarks.fields <> invalid then node.setFields(handlerConfigBookmarks.fields)
                 node.videoView = m.top
             else
-                ?"Error : Unable to create BookmarksHandler with type " NodeName
+                ?"Error : Unable to create handlerConfigBookmarks with type " NodeName
             end if
         else
-            '?"Error : Invalid BookmarksHandler config"
+            '?"Error : Invalid handlerConfigBookmarks config"
         end if
     end if
 end sub
@@ -759,6 +799,10 @@ sub LoadEndcardContent(content, HandlerConfig)
         nextItem: Utils_CopyNode(m.top.content.GetChild(m.top.currentIndex + 1))
         content: content
         HandlerConfig: HandlerConfig
+
+        ' retry to load content only if failed flag is set
+        mAllowEmptyResponse : true
+
         onReceive: function(content) ' content is the same node that passed to LoadEndcardContent
             if m.nextItem <> Invalid and content <> Invalid and content.GetChild(0) <> Invalid
                 content.GetChild(0).InsertChild(m.nextItem, 0)
@@ -787,8 +831,6 @@ sub SGDEX_SetTheme(theme as Object)
     SGDEX_setThemeFieldstoNode(m, {
         TextColor: {
             video: [
-                "bufferingTextColor",
-                "retrievingTextColor"
                 {
                     trickPlayBar:  [
                         "textColor"
@@ -803,6 +845,8 @@ sub SGDEX_SetTheme(theme as Object)
                         "trackBlendColor"
                     ]
                 }
+                "bufferingTextColor",
+                "retrievingTextColor"
             ]
         }
         progressBarColor: {
@@ -849,7 +893,20 @@ sub SGDEX_SetTheme(theme as Object)
         retrievingBarTrackBlendColor:               { video: { retrievingBar: "trackBlendColor" } }
         retrievingBarEmptyBarBlendColor:            { video: { retrievingBar: "emptyBarBlendColor" } }
         retrievingBarFilledBarBlendColor:           { video: { retrievingBar: "filledBarBlendColor" } }
+
+        ' BIF customization
+        focusRingColor:                             { video: { bifDisplay: "frameBgBlendColor" } }
     }
+
+    ' RDE-2876: Workaround to prevent user from  unintentionally changing clock color
+    ' when setting explicitly trickPlayBarTextColor and retrievingTextColor fields
+    if theme.textColor = invalid and (theme.trickPlayBarTextColor <> invalid or theme.retrievingTextColor <> invalid)
+        SGDEX_setThemeFieldstoNode(m, themeAttributes, {
+            trickPlayBarTextColor: "0xffffff"
+            retrievingTextColor: "0xffffff"
+        })
+    end if
+
     SGDEX_setThemeFieldstoNode(m, themeAttributes, theme)
 end sub
 

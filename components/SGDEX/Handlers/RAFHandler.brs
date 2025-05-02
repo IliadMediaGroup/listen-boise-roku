@@ -2,6 +2,32 @@
 
 sub Init()
     m.top.functionname = "PlayContentWithFullRAFIntegration"
+    m.top.ObserveFieldScoped("state", "OnStateChanged")
+end sub
+
+sub OnStateChanged(event as Object)
+    state = event.getData()
+    if state = "stop" or state = "done"
+        ' do the cleanup
+        scene = m.top.GetScene()
+        if scene <> invalid
+            ' locate the rafGroup that we pass as a parent view to the RAF for 
+            ' the ads rendering in PlayContentWithFullRAFIntegration()
+            rafGroup = scene.FindNode("rafGroup")
+            if rafGroup <> invalid
+                ' remove the rafGroup, if exists, to make sure the renderer
+                ' node appended by RAF behind the scenes gets disposed
+                scene.RemoveChild(rafGroup)
+            end if
+            
+            ' in case of CSAS mode, stop/invalidate the CSAS stream renderer
+            ' cached to m.top prior to CSAS playback start
+            if m.top.useCSAS = true and m.top.renderNode <> invalid
+                m.top.renderNode.control = "stop"
+                m.top.renderNode = invalid
+            end if
+        end if
+    end if
 end sub
 
 sub ConfigureRAF(adIface)
@@ -26,10 +52,10 @@ sub PlayContentWithFullRAFIntegration()
     ' We should override Raf functions to know that thay were called in channel handler
     ' and for importAds we should save ads array somewhere to pass it later to ShowAds
     adIface.sgdex_original_importAds = adIface.importAds
-    adIface.importAds = sub(ads)
+    adIface.importAds = sub(ads, enableLogging = false as Boolean)
             m.sgdex_flag_importAds_was_called = true
             m.sgdex_importedAds = ads
-            m.sgdex_original_importAds(ads)
+            m.sgdex_original_importAds(ads, enableLogging)
         end sub
 
     adIface.sgdex_original_StitchedAdsInit = adIface.StitchedAdsInit
@@ -38,24 +64,50 @@ sub PlayContentWithFullRAFIntegration()
             m.sgdex_original_StitchedAdsInit(ads)
         end sub
 
+    ' Overriding setTrackingCallback function to allow MediaView and developer track events using proxying
+    adIface.sgdex_original_SetTrackingCallBack = adIface.setTrackingCallBack
+    adIface.setTrackingCallBack = sub(callbackName = invalid as dynamic, obj = invalid as dynamic)
+            m["sgdex_user_custom_trackingCallback"] = callbackName
+            m["sgdex_user_custom_callbackObj"] = obj
+        end sub
     ' developer can configure Raf via overrided ConfigureRAF function inside Handler in channel
     ConfigureRAF(adIface)
 
-    ' Should developer scene as a place for ads rendering
-    view = m.top.getScene()
-    if view = invalid
-        print "Error: invalid view"
-        return
-    end if
+    content = m.top.content
 
-    ' Add loading facade for case if GetAds would be loaded for some time
-    facade = videoView.createChild("LoadingFacade")
+    scene = m.top.GetScene()
+    if scene = invalid then return
+
+    ' Create a dummy group (rafGroup) to be used as a parent view for RAF ads
+    ' rendering. RAF will be creating its own renderer node behind the scenes
+    ' as a child of this rafGroup node.
+    '
+    ' This is a workaround for the case when the Media view is being closed 
+    ' programmatically (MediaView.close=true) in the middle of the ads playback.
+    '
+    ' RAF doesn't provide any functionality to dispose its renderer node
+    ' on demand, so instead we will be disposing our rafGroup node having RAF
+    ' renderer as its child to clean things up when the RAF handler has stopped
+    ' (state="stop") or finished (state="done") - see OnStateChanged() callback.
+    view = scene.CreateChild("Group")
+    view.id = "rafGroup"
+    scene = invalid
 
     ' adPods is array of ads - used for preroll playback
     adPods = Invalid
 
+    ' if flag was set, we'll use Client-stitched ads approach
+    if m.top.useCSAS then
+        adIface.sgdex_flag_ClientStitchedAds_was_enabled = true
+        adIface.sgdex_flag_StitchedAdsInit_was_called = true
+        adIface.videoView = videoView
+    end if
+
+    ' enable tracking callbacks for all RAF modes
+    adIface.sgdex_original_SetTrackingCallBack(SGDEXProxyTrackingCallback)
+
     ' if it is not imported ads and not stitched ads, load ads with usual GetAds
-    if adIface.sgdex_flag_importAds_was_called = Invalid and adIface.sgdex_flag_StitchedAdsInit_was_called = Invalid then
+    if adIface.sgdex_flag_importAds_was_called = Invalid and (adIface.sgdex_flag_StitchedAdsInit_was_called = Invalid or adIface.sgdex_flag_ClientStitchedAds_was_enabled = true) then
         adPods = adIface.GetAds()
 
     ' if it is imported ads, get it to show in preroll
@@ -63,13 +115,12 @@ sub PlayContentWithFullRAFIntegration()
         adPods = adIface.sgdex_importedAds
     end if
 
-    ' close loading facade, because all ads already loaded
-    videoView.removeChild(facade)
-
     ' If there are some ads to play and it is not stitched ads, try to play preroll
     playContent = true
     if adPods <> invalid and adPods.count() > 0 and adIface.sgdex_flag_StitchedAdsInit_was_called = Invalid
+        m.top.isPlayingAds = true
         playContent = adIface.ShowAds(adPods, invalid, view)
+        m.top.isPlayingAds = false
     end if
 
     m.port = CreateObject("roMessagePort")
@@ -95,13 +146,32 @@ sub PlayContentWithFullRAFIntegration()
 
     ' event loop
     while true
-        msg = Wait(0, m.port)
+        msg = Wait(500, m.port)
         msgType = type(msg)
 
         ' if ads is stitched, handle it
         curAd = Invalid
         if adIface.sgdex_flag_StitchedAdsInit_was_called <> Invalid and adIface.sgdex_flag_StitchedAdsInit_was_called = true
             curAd = adIface.StitchedAdHandledEvent(msg, player)
+        end if
+
+        if adIface.sgdex_flag_ClientStitchedAds_was_enabled <> Invalid and adIface.sgdex_flag_ClientStitchedAds_was_enabled = true and videoView.currentItem <>invalid
+            content = videoView.currentItem
+            ' TODO: log for invalid content/adPods
+            
+            ' contruct the CSAS stream with ads to work with
+            csasStream = adIface.constructStitchedStream(content, adPods)
+            ' cache the CSAS stream renderer instance to m.top.renderNode
+            ' to give MediaView possibility to apply theme attributes to it
+            m.top.renderNode = csasStream
+            ' start CSAS playback
+            isCSASPlayedToCompletion = adIface.renderStitchedStream(csasStream, videoView)
+            ' CSAS playback finished
+            ' close media view if the user exited playback before the stream completed
+            if not isCSASPlayedToCompletion
+                videoView.close = true
+            end if
+            exit while
         end if
 
         ' ad handled event; if stitched ad skipped, exit playback
@@ -135,7 +205,9 @@ sub PlayContentWithFullRAFIntegration()
                         videoNode.control = "stop"
 
                         ' play midroll
+                        m.top.isPlayingAds = true
                         playContent = adIface.ShowAds(adPod, invalid, view)
+                        m.top.isPlayingAds = false
 
                         ' save local variable to handle "stopped" state for midroll playback
                         m.midRoll = playContent
@@ -166,7 +238,9 @@ sub PlayContentWithFullRAFIntegration()
                             ' postroll ad. stop video. show postroll when
                             ' state changes to  "sаtopped".
                             videoNode.control = "stop"
+                            m.top.isPlayingAds = true
                             adIface.ShowAds(adPod, invalid, view)
+                            m.top.isPlayingAds = false
                         end if
                         exit while
                     else if curState = "stopped"
@@ -195,4 +269,24 @@ sub PlayContentWithFullRAFIntegration()
     videoNode.UnobserveFieldScoped("state")
     videoNode.UnobserveFieldScoped("control")
     videoNode = Invalid
+end sub
+
+' Proxy tracking callback to provide info about position, state to MediaView and allow developer to track them independently
+sub SGDEXProxyTrackingCallback(obj = invalid as Dynamic, eventType = invalid as Dynamic, ctx = invalid as Dynamic)
+    instance = Roku_Ads()
+    if instance.sgdex_user_custom_trackingCallback <> invalid then
+        instance.sgdex_user_custom_trackingCallback(instance.sgdex_user_custom_callbackObj, eventType, ctx)
+    end if
+
+    ' propagate position and state values from RAF CSAS playback to the MediaView fields
+    if instance.sgdex_flag_ClientStitchedAds_was_enabled = true
+        videoView = instance.videoView
+        if eventType = "ContentPosition" then
+            videoView.position = ctx.contentPos
+        else if eventType = "AdStateChange" then
+            videoView.state = ctx.state
+        else if eventType = "ContentStateChange" then
+            videoView.state = ctx.state
+        end if
+    end if
 end sub

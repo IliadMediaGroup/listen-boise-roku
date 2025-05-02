@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2018 Roku, Inc. All rights reserved. -->
 
 <!--
-    @Public
+    @Private
     Video View is a component that provide pre-defined approach to play Video
     It incapsulates different features:
         - Playback of video playlist or one item;
@@ -143,6 +143,9 @@
                 @PossibleValue retrievingBarTrackBlendColor - Same as bufferingBarTrackBlendColor but for retrieving bar
                 @PossibleValue retrievingBarEmptyBarBlendColor - Same as bufferingBarEmptyBarBlendColor but for retrieving bar
                 @PossibleValue retrievingBarFilledBarBlendColor - Same as bufferingBarFilledBarBlendColor but for retrieving bar
+
+                <b>BIF customization</b>
+                @PossibleValue focusRingColor - a color to be blended with the image displayed behind individual BIF images displayed on the screen
 
                 <b>Endcard view theme attributes</b>
                 @PossibleValue buttonsFocusedColor - repeat button focused text color

@@ -3,16 +3,136 @@
 sub Init()
     ?"SGDEX: create new view: "m.top.subtype()
     m.themeDebug = false
+
+    ' viewOffsetY can be overriden in init of each view
+    ' to change the spacing between overhang and content for specific cases
+    m.viewOffsetY = 25
+    m.viewOffsetX = 20
+    m.defaultOverhangHeight = 115
+
+    ' Minimum Y offset from top edge of the screen to content
+    m.buttonBarSafeZoneYPosition = 36 ' 720 * 0.05
+    m.contentAreaSafeZoneYPosition = 72 ' 720 * 0.10
+    m.contentAreaSafeZoneXPosition = 128 ' 1280 * 0.10
+
     m.top.overhang = m.top.FindNode("overhang")
+    m.top.overhang.ObserveField("height", "SGDEX_OnOverhangHeightChange")
     m.top.getScene().ObserveField("theme", "SGDEX_GlobalThemeObserver")
     m.top.getScene().ObserveField("updateTheme", "SGDEX_GlobalUpdateThemeObserver")
-    
+
+    m.bbContainer = m.top.getScene().FindNode("buttonBarContainer")
+    m.bbContainer.ObserveFieldScoped("change", "SGDEX_OnButtonBarChanged")
+    SGDEX_SetButtonBarObservers()
+
+    m.top.viewContentGroup = m.top.FindNode("viewContentGroup")
+
+    m.top.ObserveField("wasShown", "OnViewWasShown")
+
     m.backgroundRectangle = m.top.FindNode("backgroundRectangle")
     m.backgroundImage = m.top.FindNode("backgroundImage")
-    
-    
+
+
     SGDEX_InternalBuildAndSetTheme(m.top.theme, m.top.getScene().actualThemeParameters)
 end sub
+
+sub SGDEX_OnButtonBarChanged(event as Object)
+    change = event.GetData()
+    if change <> invalid and change.operation = "add"
+        SGDEX_UpdateBaseViewUI()
+        SGDEX_SetButtonBarObservers()
+    end if
+end sub
+
+sub SGDEX_SetButtonBarObservers()
+    fields = ["content", "visible", "overlay", "alignment", "autoHide", "renderOverContent"]
+    for each field in fields
+        m.top.getScene().buttonBar.UnobserveFieldScoped(field)
+        m.top.getScene().buttonBar.ObserveFieldScoped(field, "SGDEX_OnButtonBarInterfaceChange")
+    end for 
+end sub
+
+sub OnViewWasShown()
+    buttonBar = m.top.getScene().buttonBar
+    if buttonBar <> invalid and m.top.visible then
+        SGDEX_UpdateBaseViewUI()
+    end if
+end sub
+
+sub SGDEX_OnOverhangHeightChange()
+    overhangHeight = m.top.overhang.height
+    buttonBar = m.top.GetScene().buttonBar
+
+    if buttonBar.visible = true
+        buttonBar.translation = [0, overhangHeight]
+        if buttonBar.alignment = "left" 
+            if buttonBar.overlay or IsFullSizeView(m.top)
+                buttonBar.translation = [0, 0]
+            end if
+        end if
+    end if
+end sub
+
+sub SGDEX_OnButtonBarInterfaceChange()
+    buttonBar = m.top.getScene().buttonBar
+    if buttonBar <> invalid and m.top.visible then
+        SGDEX_UpdateBaseViewUI()
+    end if
+end sub
+
+
+' Default logic to adjust place zone with content according to
+' overhang and buttonbar height
+' each view may have specific logic according to button bar presence
+' it may implemented in SGDEX_UpdateViewUI
+sub SGDEX_UpdateBaseViewUI()
+    buttonBar = m.top.getScene().buttonBar
+
+    isButtonBarVisible = buttonBar.visible
+    isButtonBarOverlay = buttonBar.overlay
+    overhang = m.top.findNode("overhang")
+    overhangHeight = overhang.height
+    if not overhang.visible
+        overhangHeight = 0
+    end if
+
+    viewContentOffsetY = overhangHeight + m.viewOffsetY
+    viewContentOffsetX = 0
+
+    if isButtonBarVisible
+        buttonBar.translation = [0, overhangHeight]
+        if not isButtonBarOverlay
+            if buttonBar.alignment = "top"
+                viewContentOffsetY += GetButtonBarHeight()
+            else if buttonBar.alignment = "left"
+                viewContentOffsetX += GetButtonBarWidth()
+                if viewContentOffsetX < m.contentAreaSafeZoneXPosition
+                    viewContentOffsetX = m.contentAreaSafeZoneXPosition
+                end if
+                viewContentOffsetX += m.viewOffsetX
+            end if
+        end if
+        SGDEX_OnOverhangHeightChange()
+    end if
+
+    ' if viewContentOffsetY + overhangHeight > m.defaultOverhangHeight
+    '     viewContentOffsetY += overhangHeight - m.defaultOverhangHeight
+    ' end if
+
+    if viewContentOffsetY < m.contentAreaSafeZoneYPosition
+        viewContentOffsetY = m.contentAreaSafeZoneYPosition
+    end if
+
+    m.top.viewContentGroup.translation = [viewContentOffsetX, viewContentOffsetY]
+
+    SGDEX_UpdateViewUI()
+end sub
+
+
+' Each view may have specific UI adjustments depends on button bar and overhang
+' to implement so, need to override this function
+sub SGDEX_UpdateViewUI()
+end sub
+
 
 'this function will return view key to retrieve it from global theme map
 function SGDEX_GetViewType() as String
@@ -26,7 +146,7 @@ end sub
 sub SGDEX_ViewUpdateThemeObserver(event as Object)
     if m.themeDebug then ? "SGDEX_ViewUpdateThemeObserver"
     theme = {}
-    
+
     data = event.GetData()
     if m.themeDebug then ? "data="event.GetData()
     theme.Append(data)
@@ -77,12 +197,18 @@ end sub
 sub SGDEX_InternalBuildAndSetTheme(viewTheme as Object, newTheme as Object, isUpdate = false as Boolean)
     if GetInterface(newTheme, "ifAssociativeArray") <> invalid then
         viewKey = SGDEX_GetViewType()
-        
         theme = {}
+
+        theme.Append(SGDEX_GetViewSpecificTheme(viewKey, newTheme)) ' Setting specific theme attributes, e.g. for endcard
         if GetInterface(newTheme["global"], "ifAssociativeArray") <> invalid then theme.Append(newTheme["global"])
         if GetInterface(newTheme[viewKey], "ifAssociativeArray") <> invalid then theme.Append(newTheme[viewKey])
         if GetInterface(viewTheme, "ifAssociativeArray") <> invalid then theme.Append(viewTheme)
         SGDEX_InternalSetTheme(theme, isUpdate)
+
+        buttonBar = m.top.getScene().buttonBar
+        if buttonBar <> invalid
+            SGDEX_UpdateBaseViewUI()
+        end if
     end if
 end sub
 
@@ -95,12 +221,11 @@ sub SGDEX_InternalSetTheme(theme as Object, isUpdate = false as Boolean)
     end if
     SGDEX_SetOverhangTheme(theme)
     SGDEX_SetBackgroundTheme(theme)
-    
+
     SGDEX_SetTheme(theme)
 end sub
 
 sub SGDEX_SetOverhangTheme(theme)
-'    overhang = m.top.overhang
     overhang = m.top.overhang
     if overhang <> invalid then
         SGDEX_setThemeFieldstoNode(m.top, {
@@ -115,7 +240,7 @@ sub SGDEX_SetOverhangTheme(theme)
                 ]
             }
         }, theme)
-        
+
         overhangThemeAttributes = {
             'Main attribute
             Overhangtitle:                   "title"
@@ -129,7 +254,7 @@ sub SGDEX_SetOverhangTheme(theme)
             OverhangoptionsText:             "optionsText"
             Overhangheight:                  "height"
             OverhangBackgroundColor:         "color"
-                                                                                         
+
             'Additional attributes, no need to document these
             OverhangclockColor:              "clockColor"
             OverhangclockText:               "clockText"
@@ -144,11 +269,18 @@ sub SGDEX_SetOverhangTheme(theme)
             OverhangrightDividerUri:         "rightDividerUri"
             OverhangrightDividerVertOffset:  "rightDividerVertOffset"
             OverhangrightLogoBaselineOffset: "rightLogoBaselineOffset"
-            OverhangrightLogoUri:            "rightLogoUri"
-            OverhangshowRightLogo:           "showRightLogo"
             Overhangtranslation:             "translation"
         }
-        
+
+        ' RDE-2697: work around a FW issue where setting showOptions changes the overhang height unexpectedly
+        if theme.OverhangshowOptions = false
+            if theme.OverhanglogoBaselineOffset = invalid
+                theme.OverhanglogoBaselineOffset = 13
+            else
+                theme.OverhanglogoBaselineOffset += 13
+            end if
+        end if
+
         for each key in theme
             if overhangThemeAttributes[key] <> invalid then
                 field = overhangThemeAttributes[key]
@@ -160,32 +292,50 @@ sub SGDEX_SetOverhangTheme(theme)
 end sub
 
 sub SGDEX_SetBackgroundTheme(theme as Object)
-    isUriBackground = GetInterface(theme.backgroundImageURI, "ifString") <> invalid
-
-    if isUriBackground then
-        ' don't use backgroundColor for blending color as it's used for other Views 
+    colorTheme = {}
+    if GetInterface(theme.backgroundImageURI, "ifString") <> invalid
+        ' don't use backgroundColor for blending color as it's used for other Views
         ' so developers don't want it to be applied to this View
         colorTheme = { backgroundImageURI: { backgroundImage: "uri" } }
-    else
+        m.backgroundImage.visible = true
+        m.backgroundRectangle.visible = false
+    else if GetInterface(theme.backgroundColor, "ifString") <> invalid
         colorTheme = { backgroundColor: { backgroundRectangle: "color" } }
+        m.backgroundImage.visible = false
+        m.backgroundRectangle.visible = true
     end if
-    
-    m.backgroundRectangle.visible = not isUriBackground
-    m.backgroundImage.visible = isUriBackground
-    
-   
     SGDEX_setThemeFieldstoNode(m, colorTheme, theme)
 end sub
 
+' Function returns all theme attributes specified especially for this view
+' For example:
+' m.top.theme = {
+'     mediaView: {
+'          textColor: "0xFFFFFF"
+'     }
+' }
+function SGDEX_GetViewSpecificTheme(viewKey as String, newTheme as Object) as Object
+    viewTheme = {}
+
+    if viewKey = "endcardView"
+        if newTheme["videoView"] <> invalid then viewTheme.Append(newTheme["videoView"]) ' Sharing videoView theme attributes with endcardView.
+        if newTheme["mediaView"] <> invalid then viewTheme.Append(newTheme["mediaView"]) ' Sharing mediaView theme attributes with endcardView.
+    else if viewKey = "mediaView"
+        if newTheme["videoView"] <> invalid then viewTheme.Append(newTheme["videoView"]) ' Sharing videoView theme attributes with mediaView.
+    end if
+    if newTheme[viewKey] <> invalid then viewTheme.Append(newTheme[viewKey])
+    return viewTheme
+end function
+
 'This function is used to set theme attributes to nodes
-'It support advanced setup of theming config 
+'It support advanced setup of theming config
 'Example
 
 
 'map = {
 '    >>> 'Theme attribute name
 '    genericColor: {
-'        'for each attribute in video node set "genericColor" value   
+'        'for each attribute in video node set "genericColor" value
 '        video: [
 '            "bufferingTextColor",
 '            "retrievingTextColor"
@@ -198,7 +348,7 @@ end sub
 '                ]
 '            }
 '        ]
-'    
+'
 '    }
 '
 '
@@ -206,7 +356,7 @@ end sub
 '
 '    textColor:                      { video: { trickPlayBar: "textColor" } }
 '    currentTimeMarkerBlendColor:    "currentTimeMarkerBlendColor"
-'    
+'
 '}
 
 
@@ -254,7 +404,43 @@ sub SGDEX_SetThemeAttribute(node, field as String, value as Object, defaultValue
     if value <> invalid then
         properValue = value
     end if
-    
+
     if m.themeDebug then ? "SGDEX_SetThemeAttribute, field="field" , value=["properValue"]"
     node[field] = properValue
 end sub
+
+function GetViewXPadding()
+    return 126
+end function
+
+' Returns width of the buttonBar. Returns backgroundRectangle width, 
+' if such child exists, otherwise returns width of the BoundingRect()
+function GetButtonBarWidth() 
+    return GetButtonBarBounds().width
+end function
+
+' Returns height of the buttonBar. Returns backgroundRectangle height, 
+' if such child exists, otherwise returns height of the BoundingRect()
+function GetButtonBarHeight() 
+    return GetButtonBarBounds().height
+end function
+
+' Returns width and height of the buttonBar. Returns backgroundRectangle dimensions, 
+' if such child exists, otherwise returns width and height of the BoundingRect()
+function GetButtonBarBounds() 
+    buttonBar = m.top.getScene().buttonBar
+    backgroundRectangle = buttonBar.FindNode("backgroundRectangle")
+    bounds = {
+        width: 0
+        height: 0
+    }
+    if backgroundRectangle <> invalid
+        bounds.width = backgroundRectangle.width
+        bounds.height = backgroundRectangle.height
+    else
+        boundingRect = buttonBar.BoundingRect()
+        bounds.width = boundingRect.width
+        bounds.height = boundingRect.height
+    end if
+    return bounds
+end function

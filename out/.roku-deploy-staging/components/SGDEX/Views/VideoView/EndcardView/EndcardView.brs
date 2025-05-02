@@ -56,9 +56,26 @@ Sub Init()
     ' m.time is used internally to update label
     m.time = 0
 
+    m.buttonBar = m.top.getScene().buttonBar
+    m.isButtonBarVisible = m.buttonBar.visible
+    m.renderOverContent = m.buttonBar.renderOverContent
+    m.isAutoHideMode = m.buttonBar.autoHide
+
+    m.buttonBar.opacity = 1
+    m.bottomRectangle = m.top.findNode("bottomRectangle")
+    m.topRectangle = m.top.findNode("topRectangle")
+
+    m.overhangHeightTheme = invalid
     if m.LastThemeAttributes <> invalid then
         SGDEX_SetTheme(m.LastThemeAttributes)
         SGDEX_SetBackgroundTheme(m.LastThemeAttributes)
+        m.overhangHeightTheme = m.LastThemeAttributes.overhangHeight
+    end if
+
+    ' if overhang height was not set through theme then
+    ' change default overhang height to content area safe zone
+    if m.isButtonBarVisible and m.overhangHeightTheme = invalid
+       m.top.overhang.height = m.contentAreaSafeZoneYPosition
     end if
 End Sub
 
@@ -94,6 +111,7 @@ End Sub
 '
 ' @param event [roSGNodeEvent] - m.top.focusedChild field event
 Sub OnFocusedChildChange(event as Object)
+    buttonBar = m.top.getScene().buttonBar
     if m.top.IsInFocusChain() and m.FocusableGroup.HasFocus() = false and m.repeatButton.HasFocus() = false and m.grid.HasFocus() = false
         if m.grid.content <> invalid and m.grid.content.GetChildCount() > 0
             m.grid.focusable = true
@@ -101,6 +119,10 @@ Sub OnFocusedChildChange(event as Object)
         else if m.repeatButton.IsInFocusChain() = false
             m.repeatButton.SetFocus(true)
         end if
+    else if buttonBar.visible = true and buttonBar.IsInFocusChain() = true
+        m.timerLabel.visible = false
+        m.time = m.top.endcardCountdownTime
+        m.endcardTimer.control = "stop" 
     end if
 End Sub
 
@@ -174,6 +196,7 @@ End Function
 Sub OnContentChanged(event as Object)
     content = event.GetData()
     m.grid.content = content
+    SGDEX_UpdateViewUI()
 End Sub
 
 
@@ -184,6 +207,32 @@ Sub OnEndcardCountdownTimeChange(event as Object)
     endcardCountdownTime = event.GetData()
     m.time = endcardCountdownTime
 End Sub
+
+
+sub SGDEX_UpdateViewUI()
+    m.top.getScene().buttonBar.opacity = 1
+    buttonBar = m.top.getScene().buttonBar
+    buttonBaralignment = buttonBar.alignment
+    isButtonBarVisible = buttonBar.visible
+    isButtonBarOverlay = buttonBar.overlay
+    if m.top.getScene().buttonBar.visible and not isButtonBarOverlay and buttonBaralignment = "top" and m.repeatButton <> invalid then
+        newY = m.buttonBar.boundingRect()["y"] + m.buttonBar.boundingRect()["height"] + m.viewOffsetY
+        m.repeatButton.translation= [m.repeatButton.translation[0],newY]
+        if newY + m.repeatButton.itemsize[1] > m.bottomRectangle.boundingRect()["y"] then
+            moveContentOnY = newY + m.repeatButton.itemsize[1] - m.bottomRectangle.boundingRect()["y"] + m.viewOffsetY
+            m.bottomRectangle.translation = [m.bottomRectangle.translation[0], m.bottomRectangle.translation[1] + moveContentOnY]
+            m.timerLabel.translation = [m.timerLabel.translation[0], m.timerLabel.translation[1] + moveContentOnY]
+            m.topRectangle.height = moveContentOnY + m.topRectangle.height
+            m.grid.translation = [m.grid.translation[0], m.grid.translation[1] + moveContentOnY]
+        end if
+    else if isButtonBarVisible and not isButtonBarOverlay and buttonBaralignment = "left"
+        newX = (GetButtonBarWidth() - GetViewXPadding()) + m.viewOffsetX
+        if m.bottomRectangle <> invalid and m.timerLabel <> invalid and m.grid <> invalid
+            m.timerLabel.translation = [m.top.viewContentGroup.translation[0], m.timerLabel.translation[1]]    
+            m.grid.translation = [m.top.viewContentGroup.translation[0], m.grid.translation[1]]
+        end if
+    end if
+end sub
 
 ' ***************
 ' Themes support
@@ -228,6 +277,7 @@ Sub SGDEX_SetTheme(theme as Object)
 
         timerLabelColor:                { timerLabel: "color" }
     }
+
     SGDEX_setThemeFieldstoNode(m, themeAttributes, theme)
 End Sub
 
@@ -247,5 +297,5 @@ Sub SGDEX_SetBackgroundTheme(theme as Object)
 End Sub
 
 Function SGDEX_GetViewType() as String
-    return "videoView"
+    return "endcardView"
 End Function

@@ -18,54 +18,7 @@
             height="200"
             loadDisplayMode="scaleToFit"
             visible="true" />
-        <Group
-            id="tabContainer"
-            translation="[30, 250]">
-            <ButtonGroup
-                id="tabGroup"
-                layoutDirection="vert"
-                itemSpacings="[20]">
-                <Button
-                    id="listenLiveTab"
-                    text="Listen Live"
-                    focusable="true"
-                    visible="true"
-                    minWidth="120"
-                    textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFF00FF" />
-                <Button
-                    id="newsTab"
-                    text="News"
-                    focusable="true"
-                    visible="true"
-                    minWidth="120"
-                    textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFF00FF" />
-                <Button
-                    id="podcastsTab"
-                    text="Podcasts"
-                    focusable="true"
-                    visible="true"
-                    minWidth="120"
-                    textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFF00FF" />
-                <Button
-                    id="NowPlayingButton"
-                    text="Now Playing"
-                    focusable="true"
-                    visible="true"
-                    minWidth="120"
-                    textColor="0xFFFFFFFF"
-                    focusedTextColor="0xFFFF00FF" />
-            </ButtonGroup>
-        </Group>
-        <Group
-            id="contentStack"
-            translation="[270, 250]">
-            <ListenLiveView id="listenLiveView" visible="true" />
-            <NewsView id="newsView" visible="false" />
-            <PodcastsView id="podcastsView" visible="false" />
-        </Group>
+        <ListenLiveView id="listenLiveView" visible="true" translation="[0, 0]" />
         <Audio id="audioPlayer" />
     </children>
 </component>
