@@ -4,9 +4,8 @@ major_version=1
 minor_version=0
 build_version=0
 
-# App Icon and Splash Screen
+# App Icon and Splash
 mm_icon_focus_fhd=pkg:/images/channel-poster_fhd.png
-mm_icon_focus_hd=pkg:/images/channel-poster_hd.png
-mm_icon_focus_sd=pkg:/images/channel-poster_sd.png
-splash_screen=pkg:/images/splash_screen_hd.png
-splash_min_time=1000
+cm_icon_focus_fhd=pkg:/images/channel-poster_fhd.png
+mm_splash_focus_fhd=pkg:/images/splash_fhd.png
+cm_splash_focus_fhd=pkg:/images/splash_fhd.png
