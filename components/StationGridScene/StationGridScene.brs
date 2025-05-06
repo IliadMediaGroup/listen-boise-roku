@@ -1,6 +1,9 @@
 sub Init()
     ? "StationGridScene Init"
 
+    ' Bind the selection handler so it doesn't crash when an item is selected
+    m.top.ObserveField("itemSelected", "OnItemSelected")
+
     ' Create a ContentNode container for items
     contentNode = CreateObject("roSGNode", "ContentNode")
 
@@ -29,7 +32,7 @@ sub Init()
         contentNode.appendChild(item)
     end for
 
-    ' Assign to GridView's content
+    ' Assign to GridView's content field
     m.top.content = contentNode
 end sub
 
@@ -37,5 +40,7 @@ sub OnItemSelected(event as Object)
     index = event.GetData()
     selectedItem = m.top.content.getChild(index)
     ? "Selected station: " + selectedItem.Title
-    ' TODO: launch playback screen with selectedItem.StreamUrl
+    ? "Stream URL: " + selectedItem.StreamUrl
+
+    ' TODO: launch playback screen using selectedItem.StreamUrl
 end sub

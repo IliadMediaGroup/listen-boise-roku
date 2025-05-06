@@ -54,7 +54,8 @@
         <Group
             id="contentStack"
             translation="[270, 250]">
-            <ListenLiveView id="listenLiveView" visible="true" />
+            <ListenLiveView id="listenLiveView" visible="false" />
+            <StationGridScene id="stationGridScene" visible="true" />
         </Group>
         <Audio id="audioPlayer" />
     </children>
