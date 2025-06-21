@@ -7,16 +7,19 @@
   <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
   <children>
     <Group translation="[0, 0]">
-      <PosterGrid
-        id="stationGrid"
-        translation="[0, 0]"
-        itemSize="[200, 200]"
-        itemSpacing="[20, 20]"
-        numColumns="4"
-        numRows="2"
-        renderTracking="full"
-        visible="true"
-        focusable="true" />
+<PosterGrid
+    id="stationGrid"
+    translation="[0, 0]"
+    itemSize="[200, 200]"
+    itemSpacing="[20, 20]"
+    numColumns="4"
+    numRows="2"
+    renderTracking="full"
+    visible="true"
+    focusable="true" />
+
+        <!-- ADD THIS GROUP NODE - This is what SGDEX is looking for -->
+    <Group id="buttonBarContainer" />
     </Group>
     <Group translation="[0, 0]">
       <LayoutGroup

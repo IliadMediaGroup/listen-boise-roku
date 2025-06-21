@@ -1,6 +1,6 @@
 ' Copyright (c) 2018 Roku, Inc. All rights reserved.
 
-sub RunUserInterface(args)
+sub _RunUserInterface(args)
     m.args = args
     if Type(GetSceneName) <> "<uninitialized>" AND GetSceneName <> invalid AND GetInterface(GetSceneName, "ifFunction") <> invalid then
         StartSGDEXChannel(GetSceneName(), args)

@@ -1,3 +1,4 @@
+bs_libs_required=roku_ads_lib
 title=ListenBoise
 subtitle=Your Local Radio Hub
 major_version=1
