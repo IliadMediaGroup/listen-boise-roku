@@ -7,8 +7,16 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
   <children>
-    <GridView
+    <Rectangle
+      id="background"
+      width="1280"
+      height="720"
+      color="0x000000FF"
+    />
+    <MarkupGrid
       id="stationGrid"
+      translation="[100, 100]"
+      itemComponentName="StationItem"
     />
   </children>
 </component>

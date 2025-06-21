@@ -1,50 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<component name="PlaybackView" extends="DetailsView">
-    <interface>
-        <field id="station" type="assocarray" />
-        <field id="playPressed" type="boolean" />
-    </interface>
-    <script type="text/brightscript" uri="pkg:/components/PlaybackView.brs" />
-    <children>
-        <Poster
-            id="albumCoverPoster"
-            translation="[0, 0]"
-            width="300"
-            height="300"
-            loadDisplayMode="scaleToFit"
-            visible="true" />
-        <Label
-            id="stationLabel"
-            translation="[0, 340]"
-            width="300"
-            height="40"
-            font="font:SmallSystemFont"
-            color="0xFFFFFF"
-            horizAlign="center"
-            visible="true" />
-        <Label
-            id="songLabel"
-            translation="[0, 380]"
-            width="300"
-            height="40"
-            font="font:SmallSystemFont"
-            color="0xFFFFFF"
-            horizAlign="center"
-            visible="true" />
-        <Label
-            id="artistLabel"
-            translation="[0, 420]"
-            width="300"
-            height="40"
-            font="font:SmallSystemFont"
-            color="0xFFFFFF"
-            horizAlign="center"
-            visible="true" />
-        <Button
-            id="playButton"
-            iconUri="pkg:/images/play_pause.png"
-            translation="[0, 460]"
-            focusable="true"
-            visible="true" />
-    </children>
+<component name="PlaybackView" extends="Group">
+  <interface>
+    <field id="content" type="node" onChange="onContentSet" />
+    <field id="visible" type="boolean" onChange="onVisibleChange" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/PlaybackView.brs" />
+  <children>
+    <Audio
+      id="audioPlayer"
+    />
+    <Poster
+      id="stationPoster"
+      translation="[540, 180]"
+      width="200"
+      height="200"
+    />
+  </children>
 </component>

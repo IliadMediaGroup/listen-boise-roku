@@ -1,12 +1,7 @@
 {
-    "project": "Listen Boise",
-    "sourceFiles": [
-        "components/*.brs",
-        "source/*.brs"
-    ],
-    "diagnosticFilters": [
-        {
-            "code": 1013
-        }
-    ]
+    "rootDir": "src",
+    "stagingDir": "dist",
+    "retainStagingDir": true,
+    "createPackage": false,
+    "sourceMap": true
 }

@@ -8,4 +8,3 @@ title=ListenBoise
   mm_icon_focus_sd=pkg:/images/channel-poster_sd.png
   splash_screen=pkg:/images/splash_screen_hd.png
   splash_min_time=1000
-  bs_libs_required=roku_ads_lib
