@@ -1,13 +1,16 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <component name="PodcastsView" extends="Group">
+    <interface>
+        <field id="selectedPodcast" type="assocarray" />
+    </interface>
     <children>
-        <Label
-            id="podcastsLabel"
-            translation="[0, 0]"
-            text="Podcasts Placeholder"
-            color="#FFFFFF"
-            width="400">
-            <Font role="font" size="20" />
-        </Label>
+        <PosterGrid
+            id="podcastGrid"
+            visible="true"
+            numColumns="2"
+            itemSize="[300, 150]"
+            itemSpacing="[20, 20]"
+            translation="[60, 50]"
+            focusable="true" />
     </children>
 </component>

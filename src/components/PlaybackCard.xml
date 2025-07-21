@@ -1,0 +1,16 @@
+<component name="PlaybackCard" extends="Group">
+    <children>
+        <Label
+            id="artistLabel"
+            translation="[100, 100]"
+            width="300"
+            height="30"
+            text="Unknown Artist" />
+        <Label
+            id="songLabel"
+            translation="[100, 130]"
+            width="300"
+            height="30"
+            text="Unknown Song" />
+    </children>
+</component>

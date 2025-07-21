@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="FetchPodcastTask" extends="Task">
+    <interface>
+        <field id="rssUrl" type="string" />
+        <field id="episodes" type="array" />
+    </interface>
+</component>

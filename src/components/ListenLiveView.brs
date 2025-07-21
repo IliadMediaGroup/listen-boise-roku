@@ -7,7 +7,11 @@ Sub Init()
     m.songLabel = invalid
     m.artistLabel = invalid
     m.albumCoverPoster = invalid
+    m.historyList = invalid
     m.isPlaybackUILoaded = false
+    m.top.artist = ""
+    m.top.songTitle = ""
+    m.top.songHistory = []
 
     if m.stationGrid = invalid
         print "ERROR: ListenLiveView - stationGrid not found"
@@ -29,7 +33,10 @@ Sub Init()
     m.top.observeField("keyEvent", "onKeyEvent")
     m.top.observeField("selectedStationIndex", "onStationSelected")
     m.top.observeField("stations", "onStationsUpdated")
+    m.top.observeField("songHistory", "onSongHistoryUpdated")
 
+    m.stationGrid.setFocus(true)
+    m.stationGrid.itemFocused = 0
     print "ListenLiveView: stationGrid initial state - focused item: "; m.stationGrid.itemFocused; ", hasFocus: "; m.stationGrid.hasFocus()
     print "ListenLiveView: Init complete"
 End Sub
@@ -41,6 +48,8 @@ Sub onStationsUpdated()
         return
     end if
     LoadStationGridContent()
+    m.stationGrid.setFocus(true)
+    m.stationGrid.itemFocused = 0
 End Sub
 
 Sub LoadStationGridContent()
@@ -74,11 +83,13 @@ Sub LoadPlaybackUI()
     m.artistLabel = m.playbackUI.FindNode("artistLabel")
     m.albumCoverPoster = m.playbackUI.FindNode("albumCoverPoster")
     m.toggleButton = m.playbackUI.FindNode("toggleButton")
-    if m.playbackUI = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.toggleButton = invalid
+    m.historyList = m.playbackUI.FindNode("historyList")
+    if m.playbackUI = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.toggleButton = invalid or m.historyList = invalid
         print "ERROR: ListenLiveView - Playback UI nodes not found"
         return
     end if
     m.toggleButton.observeField("keyEvent", "OnToggleButtonKeyEvent")
+    m.historyList.observeField("itemFocused", "OnHistoryItemFocused")
     m.isPlaybackUILoaded = true
     print "ListenLiveView: playbackUI loaded"
 End Sub
@@ -107,7 +118,7 @@ Sub onStationSelected()
         LoadPlaybackUI()
     end if
 
-    if m.playbackUI = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.toggleButton = invalid
+    if m.playbackUI = invalid or m.stationLabel = invalid or m.songLabel = invalid or m.artistLabel = invalid or m.albumCoverPoster = invalid or m.toggleButton = invalid or m.historyList = invalid
         print "ERROR: ListenLiveView - Playback UI nodes not loaded"
         return
     end if
@@ -123,6 +134,7 @@ Sub onStationSelected()
     m.artistLabel.visible = true
     m.stationLabel.visible = true
     m.songLabel.visible = true
+    m.historyList.visible = true
 
     tabGroup = m.top.getScene().FindNode("tabGroup")
     tabContainer = m.top.getScene().FindNode("tabContainer")
@@ -157,11 +169,12 @@ Sub onStationSelected()
     print "ListenLiveView: toggleButton focus: "; m.toggleButton.hasFocus()
 
     m.metaTask = CreateObject("roSGNode", "FetchMetaTask")
-    m.metaTask.xmlUrl = m.top.stations[selectedIndex].xmlUrl
+    m.metaTask.jsonUrl = m.top.stations[selectedIndex].jsonUrl
     m.metaTask.observeField("artist", "OnArtistFetched")
     m.metaTask.observeField("songTitle", "OnSongTitleFetched")
+    m.metaTask.observeField("songHistory", "OnSongHistoryFetched")
     m.metaTask.control = "RUN"
-    print "ListenLiveView: FetchMetaTask started for URL: "; m.top.stations[selectedIndex].xmlUrl
+    print "ListenLiveView: FetchMetaTask started for URL: "; m.top.stations[selectedIndex].jsonUrl
 End Sub
 
 Sub OnArtistFetched()
@@ -175,6 +188,7 @@ Sub OnArtistFetched()
     end if
     print "ListenLiveView: Artist fetched: "; artist
     m.artistLabel.text = artist
+    m.top.artist = artist
 End Sub
 
 Sub OnSongTitleFetched()
@@ -188,6 +202,32 @@ Sub OnSongTitleFetched()
     end if
     print "ListenLiveView: Song title fetched: "; songTitle
     m.songLabel.text = songTitle
+    m.top.songTitle = songTitle
+End Sub
+
+Sub OnSongHistoryFetched()
+    if m.historyList = invalid
+        print "ListenLiveView: historyList not loaded, ignoring song history fetch"
+        return
+    end if
+    history = m.metaTask.songHistory
+    if history = invalid or history.Count() = 0
+        print "ListenLiveView: No song history available"
+        return
+    end if
+    content = CreateObject("roSGNode", "ContentNode")
+    for each song in history
+        item = content.CreateChild("ContentNode")
+        item.title = song.title + " - " + song.artist
+        print "ListenLiveView: Added song to history: "; item.title
+    end for
+    m.historyList.content = content
+    m.top.songHistory = history
+    print "ListenLiveView: Song history loaded, count: "; history.Count()
+End Sub
+
+Sub OnHistoryItemFocused()
+    print "ListenLiveView: History item focused: "; m.historyList.itemFocused
 End Sub
 
 Function OnToggleButtonKeyEvent() As Boolean
@@ -201,6 +241,10 @@ Function OnToggleButtonKeyEvent() As Boolean
     if press and (key = "OK" or key = "play")
         print "ListenLiveView: OK or play key pressed on toggleButton, notifying MainScene"
         m.top.getScene().callFunc("OnToggleButton", {})
+        return true
+    else if press and key = "down" and m.historyList <> invalid and m.historyList.visible
+        print "ListenLiveView: Down key pressed, moving focus to historyList"
+        m.historyList.setFocus(true)
         return true
     end if
     return false
@@ -242,6 +286,8 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
             if background <> invalid
                 background.visible = true
             end if
+            m.stationGrid.setFocus(true)
+            m.stationGrid.itemFocused = 0
             return true
         else if key = "OK" or key = "play"
             print "ListenLiveView: OK or play key pressed in playbackUI, notifying MainScene"
@@ -269,12 +315,17 @@ Function onKeyEvent(key as String, press as Boolean) As Boolean
             focusedIndex = m.stationGrid.itemFocused
             print "ListenLiveView: OK key pressed in stationGrid, index: "; focusedIndex
             if m.stationGrid.hasFocus()
-                ' m.stationGrid.itemSelected = focusedIndex ' This line is not needed as itemSelected is set in OnStationGridItemSelected
                 print "ListenLiveView: Setting selectedStationIndex to focused index: "; focusedIndex
                 m.top.selectedStationIndex = focusedIndex
                 print "ListenLiveView: Triggering onStationSelected"
                 return true
             end if
+        end if
+    else if m.historyList <> invalid and m.historyList.hasFocus()
+        if key = "up"
+            print "ListenLiveView: Up key pressed in historyList, moving focus to toggleButton"
+            m.toggleButton.setFocus(true)
+            return true
         end if
     end if
     return false

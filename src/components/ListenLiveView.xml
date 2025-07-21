@@ -1,80 +1,66 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="ListenLiveView" extends="Group">
-  <interface>
-    <field id="selectedStationIndex" type="integer" onChange="onStationSelected" />
-    <field id="stations" type="array" />
-  </interface>
-  <script type="text/brightscript" uri="pkg:/components/ListenLiveView.brs" />
-  <children>
-    <Group translation="[0, 0]">
-<PosterGrid
-    id="stationGrid"
-    translation="[0, 0]"
-    itemSize="[200, 200]"
-    itemSpacing="[20, 20]"
-    numColumns="4"
-    numRows="2"
-    renderTracking="full"
-    visible="true"
-    focusable="true" />
-
-        <!-- ADD THIS GROUP NODE - This is what SGDEX is looking for -->
-    <Group id="buttonBarContainer" />
-    </Group>
-    <Group translation="[0, 0]">
-      <LayoutGroup
-        id="playbackUI"
-        translation="[368, 200]"
-        layoutDirection="vert"
-        horizAlignment="center"
-        vertAlignment="center"
-        itemSpacings="[10, 10, 10, 10]"
-        visible="false">
-        <Poster
-          id="albumCoverPoster"
-          translation="[0, 0]"
-          width="300"
-          height="300"
-          loadDisplayMode="scaleToFit"
-          loadSync="true"
-          visible="false" />
-        <Label
-          id="stationLabel"
-          translation="[0, 0]"
-          width="300"
-          height="40"
-          font="font:SmallSystemFont"
-          color="0xFFFFFF"
-          horizAlign="center"
-          visible="false" />
-        <Label
-          id="songLabel"
-          translation="[0, 0]"
-          width="300"
-          height="40"
-          font="font:SmallSystemFont"
-          color="0xFFFFFF"
-          horizAlign="center"
-          visible="false" />
-        <Label
-          id="artistLabel"
-          translation="[0, 0]"
-          width="300"
-          height="40"
-          font="font:SmallSystemFont"
-          color="0xFFFFFF"
-          horizAlign="center"
-          visible="false" />
-        <Poster
-          id="toggleButton"
-          uri="pkg:/images/play_pause.png"
-          translation="[0, 0]"
-          width="48"
-          height="48"
-          loadDisplayMode="scaleToFit"
-          visible="false"
-          focusable="true" />
-      </LayoutGroup>
-    </Group>
-  </children>
+    <interface>
+        <field id="stations" type="array" />
+        <field id="selectedStationIndex" type="int" />
+        <field id="artist" type="string" />
+        <field id="songTitle" type="string" />
+        <field id="songHistory" type="array" />
+    </interface>
+    <children>
+        <PosterGrid
+            id="stationGrid"
+            visible="true"
+            numColumns="4"
+            itemSize="[150, 150]"
+            itemSpacing="[20, 20]"
+            translation="[60, 50]"
+            focusable="true" />
+        <Group id="playbackUI" visible="false">
+            <Poster
+                id="albumCoverPoster"
+                width="200"
+                height="200"
+                translation="[60, 50]"
+                visible="true" />
+            <Label
+                id="stationLabel"
+                width="600"
+                height="40"
+                translation="[280, 50]"
+                visible="true">
+                <Font id="font" size="30" uri="pkg:/fonts/Roboto-Regular.ttf" />
+            </Label>
+            <Label
+                id="artistLabel"
+                width="600"
+                height="40"
+                translation="[280, 100]"
+                visible="true">
+                <Font id="font" size="24" uri="pkg:/fonts/Roboto-Regular.ttf" />
+            </Label>
+            <Label
+                id="songLabel"
+                width="600"
+                height="40"
+                translation="[280, 140]"
+                visible="true">
+                <Font id="font" size="24" uri="pkg:/fonts/Roboto-Regular.ttf" />
+            </Label>
+            <Button
+                id="toggleButton"
+                text="Play/Pause"
+                translation="[280, 190]"
+                focusable="true"
+                visible="true" />
+            <PosterGrid
+                id="historyList"
+                numColumns="1"
+                itemSize="[600, 40]"
+                itemSpacing="[0, 10]"
+                translation="[280, 250]"
+                visible="true"
+                focusable="true" />
+        </Group>
+    </children>
 </component>
